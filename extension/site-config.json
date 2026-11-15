@@ -204,5 +204,37 @@
         "replace": ""
       }
     }
+  },
+  {
+    "siteName": "American AAdvantage",
+    "category": "Airline",
+    "icon": "https://www.aa.com/favicon.ico",
+    "urlRegex": "https://www\\.aa\\.com/aadvantage-program/profile/account-summary",
+    "selectors": {
+      "accountName": "[data-testid=\"member-details-section\"] [class*=\"_member-name_\"]",
+      "accountId": "[data-testid=\"member-details-section\"] [class*=\"_aadvantage-number_\"]",
+      "programName": "[data-testid=\"member-details-section\"] [class*=\"_aadvantage-member_\"]",
+      "rewardsValue": "[data-testid=\"award-miles-balance-text\"] [class*=\"_miles-number_\"]"
+    },
+    "normalizations": {
+      "accountName": {
+        "pattern": "^([^\\s]+).*",
+        "replace": "$1",
+        "transform": "titlecase"
+      },
+      "accountId": {
+        "pattern": "^#",
+        "replace": ""
+      },
+      "programName": {
+        "pattern": "^AAdvantage®?\\s*(.*?)®?$",
+        "replace": "$1",
+        "transform": "titlecase"
+      },
+      "rewardsValue": {
+        "pattern": "^\\s*([\\d,]+)[\\s\\S]*$",
+        "replace": "$1"
+      }
+    }
   }
 ]
