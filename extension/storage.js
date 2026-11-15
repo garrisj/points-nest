@@ -10,7 +10,7 @@ const MAX_HISTORY_ENTRIES = 100;
  * Storage area for all extension data: "sync" follows the browser account
  * across devices, "local" stays on this machine.
  */
-const STORAGE_AREA = "sync";
+const STORAGE_AREA = "local";
 const store = chrome.storage[STORAGE_AREA];
 
 /**
