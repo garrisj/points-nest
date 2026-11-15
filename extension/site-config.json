@@ -309,7 +309,7 @@
   {
     "siteName": "Wyndham Rewards",
     "category": "Hotel",
-    "icon": "https://www.wyndhamhotels.com/favicon.ico",
+    "icon": "",
     "urlRegex": "https://www\\.wyndhamhotels\\.com/wyndham-rewards/my-account",
     "selectors": {
       "accountName": ".w-subheader-hero__content h1",
