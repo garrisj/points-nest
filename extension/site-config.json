@@ -87,7 +87,8 @@
     "normalizations": {
       "accountName": {
         "pattern": "Hello (.+),",
-        "replace": "$1"
+        "replace": "$1",
+        "transform": "titlecase"
       },
       "programName": {
         "transform": "titlecase"
