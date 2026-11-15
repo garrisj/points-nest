@@ -292,7 +292,7 @@
       "accountName": ".cp-member-info-card .header h2",
       "accountId": ".cp-member-info-card .member-number",
       "programName": ".cp-member-info-card .membership-tier",
-      "rewardsValue": ".member-cp-info .points-container .points"
+      "rewardsValue": ".signed-in-dropdown .user-points .points-number"
     },
     "normalizations": {
       "accountName": {
