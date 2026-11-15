@@ -43,7 +43,40 @@ function downloadExport() {
   });
 }
 
+/**
+ * Checks that a parsed file is a Points Nest export this version can restore.
+ * Returns { ok, error } or { ok, accounts, exportedAt }.
+ */
+function validateExport(file) {
+  const fail = (error) => ({ ok: false, error });
+  if (!file || typeof file !== "object" || file.format !== "points-nest-export") {
+    return fail("That file is not a Points Nest export.");
+  }
+  if (typeof file.version !== "number" || file.version > EXPORT_VERSION) {
+    return fail("That export comes from a newer version of the extension.");
+  }
+  const balances = file.raw && file.raw.latestBalances;
+  if (!balances || typeof balances !== "object" || Array.isArray(balances)) {
+    return fail("That export holds no stored data to restore.");
+  }
+  const accounts = Object.values(balances);
+  const valid = (a) => a && a.provider && a.accountId !== undefined && typeof a.points === "number";
+  if (!accounts.every(valid)) {
+    return fail("That export holds an account record that is not complete.");
+  }
+  return { ok: true, accounts: accounts.length, exportedAt: file.exportedAt };
+}
+
+/**
+ * Replaces everything in storage with the `raw` section of an export.
+ */
+function restoreExport(raw, callback) {
+  store.clear(() => {
+    store.set(raw, callback);
+  });
+}
+
 // Export for Node.js / testing environments
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { EXPORT_VERSION, buildExport, downloadExport };
+  module.exports = { EXPORT_VERSION, buildExport, downloadExport, validateExport, restoreExport };
 }

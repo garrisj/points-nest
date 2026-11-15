@@ -740,7 +740,7 @@ body.two-column {
 
 /* Export button (export.js) */
 .export-btn {
-  margin-right: var(--spacing-md);
+  margin-right: var(--spacing-sm);
   font-size: var(--font-size-xs);
   font-weight: 600;
   padding: 5px 10px;
