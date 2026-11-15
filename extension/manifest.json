@@ -22,7 +22,8 @@
     "https://www.united.com/*",
     "https://www.aa.com/*",
     "https://online.citi.com/*",
-    "https://myaccounts.capitalone.com/*"
+    "https://myaccounts.capitalone.com/*",
+    "https://www.choicehotels.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -51,7 +52,8 @@
         "https://www.united.com/*",
         "https://www.aa.com/*",
         "https://online.citi.com/*",
-        "https://myaccounts.capitalone.com/*"
+        "https://myaccounts.capitalone.com/*",
+        "https://www.choicehotels.com/*"
       ],
       "js": ["content.js"],
       "run_at": "document_end"
@@ -72,7 +74,8 @@
         "https://www.united.com/*",
         "https://www.aa.com/*",
         "https://online.citi.com/*",
-        "https://myaccounts.capitalone.com/*"
+        "https://myaccounts.capitalone.com/*",
+        "https://www.choicehotels.com/*"
       ]
     }
   ]

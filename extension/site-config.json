@@ -282,5 +282,28 @@
         "replace": ""
       }
     }
+  },
+  {
+    "siteName": "Choice Privileges",
+    "category": "Hotel",
+    "icon": "https://www.choicehotels.com/favicon.ico",
+    "urlRegex": "https://www\\.choicehotels\\.com/choice-privileges/account",
+    "selectors": {
+      "accountName": ".cp-member-info-card .header h2",
+      "accountId": ".cp-member-info-card .member-number",
+      "programName": ".cp-member-info-card .membership-tier",
+      "rewardsValue": ".member-cp-info .points-container .points"
+    },
+    "normalizations": {
+      "accountName": {
+        "pattern": "^([^\\s]+).*",
+        "replace": "$1",
+        "transform": "titlecase"
+      },
+      "accountId": {
+        "pattern": "^Member number:\\s*([A-Z]*\\d+)[\\s\\S]*$",
+        "replace": "$1"
+      }
+    }
   }
 ]

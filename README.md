@@ -21,7 +21,7 @@ Unlike traditional reward trackers, **Points Nest does not require your credenti
 ## Supported Portals
 
 - **Banks:** Chase, American Express (Amex), Citi, Capital One
-- **Hotels:** World of Hyatt, IHG, Hilton Honors, Marriott Bonvoy
+- **Hotels:** World of Hyatt, IHG, Hilton Honors, Marriott Bonvoy, Choice Privileges
 - **Airlines:** Alaska Airlines, Delta Skymiles, United MileagePlus, American AAdvantage
 
 ---
