@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupModalListeners();
 
   // Load preferred display mode and bind click listener
-  chrome.storage.sync.get(["displayMode"], (result) => {
+  store.get(["displayMode"], (result) => {
     currentDisplayMode = result.displayMode || "pts";
     updateToggleUI();
     renderData();
@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const toggleBtn = document.getElementById("toggle-display");
   toggleBtn.addEventListener("click", () => {
     currentDisplayMode = currentDisplayMode === "pts" ? "usd" : "pts";
-    chrome.storage.sync.set({ displayMode: currentDisplayMode }, () => {
+    store.set({ displayMode: currentDisplayMode }, () => {
       updateToggleUI();
       renderData();
       if (activeModalAccount) {
@@ -132,7 +132,7 @@ async function renderData() {
   const configs = await loadConfig();
   const valuations = await loadValuations();
 
-  chrome.storage.sync.get(["latestBalances"], (result) => {
+  store.get(["latestBalances"], (result) => {
     const latestBalances = result.latestBalances || {};
     const accounts = Object.values(latestBalances);
     const overallTotal = accounts.reduce((sum, account) => sum + account.points, 0);

@@ -10,7 +10,7 @@ let isCacheLoaded = false;
 const pendingQueue = [];
 
 // Load from storage initially
-chrome.storage.sync.get(["latestBalances"], (result) => {
+store.get(["latestBalances"], (result) => {
   cachedBalances = result.latestBalances || {};
   isCacheLoaded = true;
   console.log("[Points Nest] Background cachedBalances loaded from storage sync:", cachedBalances);
@@ -23,7 +23,7 @@ chrome.storage.sync.get(["latestBalances"], (result) => {
 
 // Also keep cache in sync with storage updates from elsewhere (e.g. popup clearing/updating storage, or other devices syncing)
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "sync" && changes.latestBalances) {
+  if (areaName === STORAGE_AREA && changes.latestBalances) {
     cachedBalances = changes.latestBalances.newValue || {};
     console.log(
       "[Points Nest] Background cachedBalances updated from storage change listener:",
@@ -148,7 +148,7 @@ function processScrapedData(data) {
 }
 
 function updateLatestBalances(balances) {
-  chrome.storage.sync.set({ latestBalances: balances }, () => {
+  store.set({ latestBalances: balances }, () => {
     console.log("[Points Nest] Points updated and synced to Chrome storage.");
   });
 }

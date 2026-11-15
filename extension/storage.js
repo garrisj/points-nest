@@ -7,6 +7,13 @@
 const MAX_HISTORY_ENTRIES = 100;
 
 /**
+ * Storage area for all extension data: "sync" follows the browser account
+ * across devices, "local" stays on this machine.
+ */
+const STORAGE_AREA = "sync";
+const store = chrome.storage[STORAGE_AREA];
+
+/**
  * Returns a consistent storage key for an account.
  * Format: {provider}_{programName}_{accountId} in lowercase alphanumeric.
  */
@@ -78,7 +85,7 @@ function parseHistoryEntries(rawHistory) {
  */
 function getAccountHistory(account, callback) {
   const key = getAccountKey(account);
-  chrome.storage.sync.get([key], (result) => {
+  store.get([key], (result) => {
     const rawHistory = result[key] || [];
     const historyPoints = parseHistoryEntries(rawHistory);
 
@@ -118,7 +125,7 @@ function getAccountHistory(account, callback) {
 function updatePointsHistory(data, callback) {
   const key = getAccountKey(data);
 
-  chrome.storage.sync.get([key], (result) => {
+  store.get([key], (result) => {
     const history = result[key] || [];
 
     // Avoid duplicate entry if latest recorded entry already has the same balance
@@ -140,7 +147,7 @@ function updatePointsHistory(data, callback) {
       history.shift();
     }
 
-    chrome.storage.sync.set({ [key]: history }, () => {
+    store.set({ [key]: history }, () => {
       console.log(`[Points Nest] History updated for key ${key}. Length: ${history.length}`);
       if (callback) callback(history);
     });
@@ -157,5 +164,6 @@ if (typeof module !== "undefined" && module.exports) {
     getAccountHistory,
     updatePointsHistory,
     MAX_HISTORY_ENTRIES,
+  STORAGE_AREA,
   };
 }
