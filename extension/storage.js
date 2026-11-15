@@ -164,6 +164,6 @@ if (typeof module !== "undefined" && module.exports) {
     getAccountHistory,
     updatePointsHistory,
     MAX_HISTORY_ENTRIES,
-  STORAGE_AREA,
+    STORAGE_AREA,
   };
 }
