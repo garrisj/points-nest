@@ -204,5 +204,23 @@
         "replace": ""
       }
     }
+  },
+  {
+    "siteName": "Capital One",
+    "category": "Bank",
+    "icon": "https://www.capitalone.com/favicon.ico",
+    "urlRegex": "https://myaccounts\\.capitalone\\.com/accountSummary",
+    "selectors": {
+      "accountName": "c1-ease-account-tile .primary-detail__identity__img::attr(alt)",
+      "accountId": "c1-ease-account-tile .primary-detail__identity__account-number",
+      "programName": "c1-ease-account-tile .secondary-content__label",
+      "rewardsValue": "c1-ease-account-tile .secondary-content__amount"
+    },
+    "normalizations": {
+      "accountId": {
+        "pattern": "^\\.+",
+        "replace": ""
+      }
+    }
   }
 ]
