@@ -31,6 +31,7 @@
   {
     "siteName": "Amex",
     "category": "Bank",
+    "pooled": true,
     "icon": "https://www.americanexpress.com/favicon.ico",
     "urlRegex": "https://global\\.americanexpress\\.com/dashboard\\?account_key=[A-Z0-9]+",
     "selectors": {

@@ -7,6 +7,7 @@ let currentDisplayMode = "pts";
 let scraperConfigs = null;
 let programValuations = null;
 let activeModalAccount = null;
+let knownPeople = [];
 
 document.addEventListener("DOMContentLoaded", () => {
   chrome.runtime.sendMessage({ type: "POPUP_OPENED" }).catch(() => {});
@@ -41,13 +42,13 @@ document.addEventListener("DOMContentLoaded", () => {
       if (activeModalAccount) {
         openHistoryModal(activeModalAccount, programValuations, scraperConfigs);
       }
-    } else if (changes.latestBalances) {
+    } else if (changes.latestBalances || changes[OWNERS_KEY]) {
       renderData();
-      if (activeModalAccount) {
+      if (activeModalAccount && changes.latestBalances) {
         const updatedBalances = changes.latestBalances.newValue || {};
         const key = getAccountKey(activeModalAccount);
         if (updatedBalances[key]) {
-          activeModalAccount = updatedBalances[key];
+          activeModalAccount = { ...activeModalAccount, ...updatedBalances[key] };
           openHistoryModal(activeModalAccount, programValuations, scraperConfigs);
         }
       }
@@ -132,9 +133,10 @@ async function renderData() {
   const configs = await loadConfig();
   const valuations = await loadValuations();
 
-  store.get(["latestBalances"], (result) => {
+  store.get(["latestBalances", OWNERS_KEY], (result) => {
     const latestBalances = result.latestBalances || {};
-    const accounts = Object.values(latestBalances);
+    const owners = result[OWNERS_KEY] || {};
+    const accounts = poolAccounts(Object.values(latestBalances), owners, configs);
     const overallTotal = accounts.reduce((sum, account) => sum + account.points, 0);
 
     const titleTotalEl = document.getElementById("title-total");
@@ -158,70 +160,65 @@ async function renderData() {
       return;
     }
 
-    // Group accounts by category
-    const grouped = {};
-    const groupSize = {};
-    accounts.forEach((account) => {
-      let cat = account.category;
-      if (!grouped[cat]) {
-        grouped[cat] = [];
-        groupSize[cat] = 0;
-      }
-      grouped[cat].push(account);
-      groupSize[cat]++;
+    // Group by owner, then balance the owner groups across up to two columns
+    const ownerGroups = groupByOwner(accounts);
+    knownPeople = listPeople(accounts);
+    const columns = ownerGroups.length === 1 ? [[]] : [[], []];
+    const columnRows = columns.map(() => 0);
+    ownerGroups.forEach((group) => {
+      const i = columns.length === 1 || columnRows[0] <= columnRows[1] ? 0 : 1;
+      columns[i].push(group);
+      columnRows[i] += group.rows.length;
     });
 
-    // Sort accounts within each category by points descending
-    Object.keys(grouped).forEach((cat) => {
-      grouped[cat].sort((a, b) => b.points - a.points);
-    });
-    // Sort categories by number of accounts
-    const sortedCategories = Object.entries(groupSize)
-      .sort((a, b) => b[1] - a[1])
-      .map((entry) => entry[0]);
-
+    document.body.classList.toggle("two-column", columns.length === 2);
     accountsListContainer.replaceChildren();
-
-    if (sortedCategories.length === 1) {
-      // Single column layout
-      document.body.classList.remove("two-column");
+    columns.forEach((column) => {
       const colDiv = document.createElement("div");
       colDiv.className = "accounts-column";
-      colDiv.appendChild(
-        createCategoryGroup(sortedCategories[0], grouped[sortedCategories[0]], configs, valuations),
-      );
+      column.forEach((group) => {
+        colDiv.appendChild(createOwnerGroup(group, configs, valuations));
+      });
       accountsListContainer.appendChild(colDiv);
-    } else {
-      // 2-column balanced layout
-      const colA = [];
-      const colB = [];
-      let colARows = 0;
-      let colBRows = 0;
-      for (let i = 0; i < sortedCategories.length; i++) {
-        if (colARows <= colBRows) {
-          colA.push(sortedCategories[i]);
-          colARows += grouped[sortedCategories[i]].length;
-        } else {
-          colB.push(sortedCategories[i]);
-          colBRows += grouped[sortedCategories[i]].length;
-        }
-      }
-
-      document.body.classList.add("two-column");
-      const colADiv = document.createElement("div");
-      colADiv.className = "accounts-column";
-      colA.forEach((cat) => {
-        colADiv.appendChild(createCategoryGroup(cat, grouped[cat], configs, valuations));
-      });
-      const colBDiv = document.createElement("div");
-      colBDiv.className = "accounts-column";
-      colB.forEach((cat) => {
-        colBDiv.appendChild(createCategoryGroup(cat, grouped[cat], configs, valuations));
-      });
-      accountsListContainer.appendChild(colADiv);
-      accountsListContainer.appendChild(colBDiv);
-    }
+    });
   });
+}
+
+/**
+ * Formats the total of a list of accounts in the current display mode.
+ */
+function formatTotal(items, valuations) {
+  if (currentDisplayMode === "usd") {
+    const totalUsd = items.reduce((sum, item) => {
+      const cpp = getValuationCpp(item, valuations);
+      return sum + item.points * (cpp / 100);
+    }, 0);
+    return `$${formatCurrency(totalUsd)}`;
+  }
+  const totalPoints = items.reduce((sum, item) => sum + item.points, 0);
+  return `${formatNumber(totalPoints)} pts`;
+}
+
+/**
+ * Creates an owner section: the owner's name and total, then one category
+ * group per program type.
+ */
+function createOwnerGroup(group, configs, valuations) {
+  const ownerDiv = document.createElement("div");
+  ownerDiv.className = "owner-group";
+
+  const titleDiv = document.createElement("div");
+  titleDiv.className = "owner-title";
+  titleDiv.textContent = `${group.owner} (${formatTotal(group.rows, valuations)})`;
+  if (group.owner === UNASSIGNED) {
+    titleDiv.title = "Select a card to assign its owner";
+  }
+  ownerDiv.appendChild(titleDiv);
+
+  group.categories.forEach(({ category, rows }) => {
+    ownerDiv.appendChild(createCategoryGroup(category, rows, configs, valuations));
+  });
+  return ownerDiv;
 }
 
 /**
@@ -234,17 +231,7 @@ function createCategoryGroup(cat, items, configs, valuations) {
   const titleDiv = document.createElement("div");
   titleDiv.className = "category-title";
 
-  const totalPoints = items.reduce((sum, item) => sum + item.points, 0);
-
-  if (currentDisplayMode === "usd") {
-    const totalUsd = items.reduce((sum, item) => {
-      const cpp = getValuationCpp(item, valuations);
-      return sum + item.points * (cpp / 100);
-    }, 0);
-    titleDiv.textContent = `${cat} ($${formatCurrency(totalUsd)})`;
-  } else {
-    titleDiv.textContent = `${cat} (${formatNumber(totalPoints)} pts)`;
-  }
+  titleDiv.textContent = `${cat} (${formatTotal(items, valuations)})`;
   groupDiv.appendChild(titleDiv);
 
   const cardTemplate = document.getElementById("account-card-template");
@@ -252,7 +239,10 @@ function createCategoryGroup(cat, items, configs, valuations) {
   items.forEach((account) => {
     const clone = cardTemplate.content.cloneNode(true);
     const updatedTime = getRelativeTime(account.lastUpdated);
-    const displayName = `${account.accountName} (${account.accountId})`;
+    const displayName =
+      account.members.length > 1
+        ? `Pool of ${account.members.length} cards`
+        : `${account.accountName} (${account.accountId})`;
     const siteConfig = configs.find((c) => c.siteName === account.provider);
     const iconUrl = siteConfig ? siteConfig.icon : "";
 
@@ -506,7 +496,11 @@ function openHistoryModal(account, valuations, configs) {
     providerEl.textContent = `${account.provider} — ${account.programName}`;
   }
   if (nameEl) {
-    nameEl.textContent = `${account.accountName} (${account.accountId})`;
+    const members = account.members || [account];
+    nameEl.textContent =
+      members.length > 1
+        ? `Pool of ${members.length} cards`
+        : `${account.accountName} (${account.accountId})`;
   }
   if (iconEl) {
     const siteConfig = configs ? configs.find((c) => c.siteName === account.provider) : null;
@@ -525,6 +519,8 @@ function openHistoryModal(account, valuations, configs) {
     }
   }
 
+  setupOwnerControls(account);
+
   // Reveal modal
   backdrop.classList.remove("hidden");
   backdrop.setAttribute("aria-hidden", "false");
@@ -541,3 +537,47 @@ function openHistoryModal(account, valuations, configs) {
   });
 }
 
+/**
+ * Binds the modal's owner picker and remove button to the account. A pooled
+ * row applies both to every card in the pool.
+ */
+function setupOwnerControls(account) {
+  const NEW_PERSON = "New person…";
+  const members = account.members || [account];
+  const select = document.getElementById("modal-owner-select");
+  const input = document.getElementById("modal-owner-new");
+  const removeBtn = document.getElementById("modal-remove-btn");
+
+  const current = account.owner || UNASSIGNED;
+  const names = [UNASSIGNED, ...knownPeople, NEW_PERSON];
+  select.replaceChildren(...names.map((name) => new Option(name, name, false, name === current)));
+  input.hidden = true;
+  input.value = "";
+
+  select.onchange = () => {
+    if (select.value === NEW_PERSON) {
+      input.hidden = false;
+      input.focus();
+      return;
+    }
+    setOwner(members, select.value === UNASSIGNED ? "" : select.value, closeHistoryModal);
+  };
+  input.onkeydown = (e) => {
+    const name = input.value.trim();
+    if (e.key === "Enter" && name) {
+      setOwner(members, name, closeHistoryModal);
+    }
+  };
+
+  // Two clicks to remove, so a slip does not delete an entry
+  let armed = false;
+  removeBtn.textContent = "Remove";
+  removeBtn.onclick = () => {
+    if (!armed) {
+      armed = true;
+      removeBtn.textContent = "Click again to remove";
+      return;
+    }
+    removeAccounts(members, closeHistoryModal);
+  };
+}

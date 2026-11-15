@@ -129,10 +129,19 @@
           <span id="stat-lowest" class="stat-value">--</span>
         </div>
       </div>
+
+      <!-- Owner and removal controls -->
+      <div class="modal-owner-row">
+        <label for="modal-owner-select" class="stat-label">Owner</label>
+        <select id="modal-owner-select"></select>
+        <input id="modal-owner-new" type="text" placeholder="Name" hidden />
+        <button id="modal-remove-btn" class="modal-remove-btn">Remove</button>
+      </div>
     </div>
   </div>
 
   <script src="storage.js"></script>
+  <script src="owners.js"></script>
   <script src="chart.js"></script>
   <script src="popup.js"></script>
 </body>
