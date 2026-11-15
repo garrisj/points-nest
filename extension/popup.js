@@ -14,10 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setupModalListeners();
   document.getElementById("export-btn").addEventListener("click", downloadExport);
-  // Import runs in its own tab: a file picker closes the popup on some systems
-  document.getElementById("import-btn").addEventListener("click", () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL("import.html") });
-  });
+  setupImportModal();
 
   // Load preferred display mode and bind click listener
   store.get(["displayMode"], (result) => {

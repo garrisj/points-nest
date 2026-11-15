@@ -755,3 +755,26 @@ body.two-column {
   color: var(--text-primary);
   border-color: var(--border-hover);
 }
+
+/* Import window (import.js) */
+.import-note,
+.import-status {
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.import-status {
+  color: var(--text-primary);
+  min-height: 1.4em;
+}
+
+.import-file {
+  font: inherit;
+  font-size: var(--font-size-sm);
+}
+
+.import-confirm {
+  margin-left: 0;
+  align-self: flex-start;
+}

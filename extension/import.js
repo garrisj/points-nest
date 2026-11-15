@@ -1,14 +1,33 @@
 /**
  * import.js
- * Page script for import.html: restores all data from an export file.
+ * The popup's import window: restores all data from an export file.
  * The checks and the restore live in export.js.
  */
 
-document.addEventListener("DOMContentLoaded", () => {
+function setupImportModal() {
+  const backdrop = document.getElementById("import-modal-backdrop");
   const fileInput = document.getElementById("import-file");
   const status = document.getElementById("import-status");
   const confirmBtn = document.getElementById("import-confirm");
   let pendingRaw = null;
+
+  const reset = () => {
+    pendingRaw = null;
+    fileInput.value = "";
+    status.textContent = "";
+    confirmBtn.hidden = true;
+  };
+  const setOpen = (open) => {
+    reset();
+    backdrop.classList.toggle("hidden", !open);
+    backdrop.setAttribute("aria-hidden", String(!open));
+  };
+
+  document.getElementById("import-btn").addEventListener("click", () => setOpen(true));
+  document.getElementById("import-close-btn").addEventListener("click", () => setOpen(false));
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) setOpen(false);
+  });
 
   fileInput.addEventListener("change", async () => {
     pendingRaw = null;
@@ -44,9 +63,8 @@ document.addEventListener("DOMContentLoaded", () => {
   confirmBtn.addEventListener("click", () => {
     if (!pendingRaw) return;
     restoreExport(pendingRaw, () => {
-      pendingRaw = null;
-      confirmBtn.hidden = true;
-      status.textContent = "Import complete. Open the popup to see your data.";
+      reset();
+      status.textContent = "Import complete.";
     });
   });
-});
+}
