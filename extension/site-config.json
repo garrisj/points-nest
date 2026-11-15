@@ -67,7 +67,7 @@
     },
     "normalizations": {
       "accountName": {
-        "pattern": "^(?:Mr|Mrs|Ms|Miss|Dr|Prof)\\.?\\s+([^\\s]+).*",
+        "pattern": "^(?:(?:Mr|Mrs|Ms|Miss|Dr|Prof)\\.?\\s+)?([^\\s]+).*",
         "replace": "$1",
         "transform": "titlecase"
       }
