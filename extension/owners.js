@@ -24,7 +24,9 @@ function getOwnerRef(account) {
 function resolveOwner(account, owners) {
   const stored = owners[getOwnerRef(account)];
   if (stored) return stored;
-  return account.category === "Bank" ? UNASSIGNED : account.accountName;
+  if (account.category === "Bank") return UNASSIGNED;
+  // Title-case the fallback so "JANE" and "Jane" are one person
+  return account.accountName.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /**
