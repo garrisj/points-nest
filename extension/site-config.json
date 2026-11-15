@@ -236,5 +236,31 @@
         "replace": "$1"
       }
     }
+  },
+  {
+    "siteName": "Citi",
+    "category": "Bank",
+    "icon": "https://www.citi.com/favicon.ico",
+    "urlRegex": "https://online\\.citi\\.com/US/ag/dashboard/credit-card",
+    "selectors": {
+      "accountName": "#cardsBalanceTile .card-title",
+      "accountId": "#cardsBalanceTile .card-title",
+      "programName": ".reward-container .reward-heading",
+      "rewardsValue": ".reward-container .reward-amount"
+    },
+    "normalizations": {
+      "accountName": {
+        "pattern": "^Citi\\s+(.*?)®?\\s+Card\\s+-\\s+\\d+$",
+        "replace": "$1"
+      },
+      "accountId": {
+        "pattern": ".*-\\s*(\\d+)$",
+        "replace": "$1"
+      },
+      "programName": {
+        "pattern": "^Total\\s+(.*?)®?\\s+Points$",
+        "replace": "$1"
+      }
+    }
   }
 ]
