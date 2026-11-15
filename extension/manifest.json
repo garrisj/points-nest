@@ -23,7 +23,8 @@
     "https://www.aa.com/*",
     "https://online.citi.com/*",
     "https://myaccounts.capitalone.com/*",
-    "https://www.choicehotels.com/*"
+    "https://www.choicehotels.com/*",
+    "https://www.wyndhamhotels.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -53,7 +54,8 @@
         "https://www.aa.com/*",
         "https://online.citi.com/*",
         "https://myaccounts.capitalone.com/*",
-        "https://www.choicehotels.com/*"
+        "https://www.choicehotels.com/*",
+        "https://www.wyndhamhotels.com/*"
       ],
       "js": ["content.js"],
       "run_at": "document_end"
@@ -75,7 +77,8 @@
         "https://www.aa.com/*",
         "https://online.citi.com/*",
         "https://myaccounts.capitalone.com/*",
-        "https://www.choicehotels.com/*"
+        "https://www.choicehotels.com/*",
+        "https://www.wyndhamhotels.com/*"
       ]
     }
   ]

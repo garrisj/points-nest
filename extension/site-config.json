@@ -305,5 +305,28 @@
         "replace": "$1"
       }
     }
+  },
+  {
+    "siteName": "Wyndham Rewards",
+    "category": "Hotel",
+    "icon": "https://www.wyndhamhotels.com/favicon.ico",
+    "urlRegex": "https://www\\.wyndhamhotels\\.com/wyndham-rewards/my-account",
+    "selectors": {
+      "accountName": ".w-subheader-hero__content h1",
+      "accountId": ".w-membership-tracker__right-column > p",
+      "programName": ".w-membership-tracker__tier-details h3",
+      "rewardsValue": "[data-testid=\"membership-points-info-card-points-value\"] p"
+    },
+    "normalizations": {
+      "accountName": {
+        "pattern": "^Hi,\\s*([^\\s]+).*",
+        "replace": "$1",
+        "transform": "titlecase"
+      },
+      "accountId": {
+        "pattern": "^Member\\s*#\\s*([A-Z0-9]+)[\\s\\S]*$",
+        "replace": "$1"
+      }
+    }
   }
 ]
