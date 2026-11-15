@@ -41,7 +41,7 @@
     },
     "normalizations": {
       "accountName": {
-        "pattern": "^(?:Amex )?(.*?)(?: Card)?®(?: Card)?••••\\d+$",
+        "pattern": "^(?:Amex )?(.*?)(?: Card)?®?(?: Card)?••••\\d+$",
         "replace": "$1"
       },
       "accountId": {
