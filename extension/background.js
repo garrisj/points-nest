@@ -136,10 +136,12 @@ function processScrapedData(data) {
   } else {
     // Balance has not changed, but we successfully checked it.
     // Throttle storage writes (updates to lastUpdated) to once per minute to avoid sync write quota limits.
+    // The account name is refreshed when it differs, e.g. after a config fix.
     const prevUpdated = existingData.lastUpdated;
     const elapsed = Date.now() - new Date(prevUpdated).getTime();
-    if (elapsed > 60000) {
-      // Update the lastUpdated timestamp only
+    const nameChanged = existingData.accountName !== data.accountName;
+    if (nameChanged || elapsed > 60000) {
+      existingData.accountName = data.accountName;
       existingData.lastUpdated = data.lastUpdated;
       cachedBalances[key] = existingData;
       updateLatestBalances(cachedBalances);
