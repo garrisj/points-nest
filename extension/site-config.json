@@ -3,10 +3,16 @@
     "siteName": "Chase",
     "category": "Bank",
     "icon": "https://www.chase.com/favicon.ico",
-    "urlRegex": "https://secure\\.chase\\.com/web/auth/dashboard#/dashboard/summary/[0-9]+/CARD/BAC",
+    "urlRegex": "https://secure\\.chase\\.com/web/auth/dashboard#/dashboard/summary/[0-9]+/CARD/[A-Z]+",
     "selectors": {
-      "accountName": ".nav-bar__print-header",
-      "accountId": ".nav-bar__print-header",
+      "accountName": [
+        ".nav-bar__print-header",
+        "#accountName [data-testid=\"dataItem-label\"]"
+      ],
+      "accountId": [
+        ".nav-bar__print-header",
+        "#accountName [data-testid=\"dataItem-label\"]"
+      ],
       "programName": [
         "[id$=\"Rewards-dataItem\"] [data-testid=\"dataItem-label\"] mds-definition-link::attr(definition-text)",
         "[id$=\"Rewards-dataItem\"] [data-testid=\"dataItem-label\"]"
