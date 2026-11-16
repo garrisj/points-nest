@@ -63,8 +63,23 @@ function poolAccounts(accounts, owners, configs) {
 }
 
 /**
- * Groups rows by owner, then by category (Bank, Airline, Hotel, then any
- * other). Owners sort by name with Unassigned last; rows sort by points.
+ * Groups rows by category (Bank, Airline, Hotel, then any other), with the
+ * rows of each category sorted by points.
+ */
+function groupByCategory(rows) {
+  const found = [...new Set(rows.map((row) => row.category))];
+  const ordered = CATEGORY_ORDER.filter((cat) => found.includes(cat)).concat(
+    found.filter((cat) => !CATEGORY_ORDER.includes(cat)),
+  );
+  return ordered.map((category) => ({
+    category,
+    rows: rows.filter((row) => row.category === category).sort((a, b) => b.points - a.points),
+  }));
+}
+
+/**
+ * Groups rows by owner, then by category. Owners sort by name with
+ * Unassigned last.
  */
 function groupByOwner(rows) {
   const byOwner = {};
@@ -74,23 +89,60 @@ function groupByOwner(rows) {
 
   return Object.keys(byOwner)
     .sort((a, b) => (a === UNASSIGNED) - (b === UNASSIGNED) || a.localeCompare(b))
-    .map((owner) => {
-      const ownerRows = byOwner[owner];
-      const found = [...new Set(ownerRows.map((row) => row.category))];
-      const ordered = CATEGORY_ORDER.filter((cat) => found.includes(cat)).concat(
-        found.filter((cat) => !CATEGORY_ORDER.includes(cat)),
-      );
-      return {
-        owner,
-        rows: ownerRows,
-        categories: ordered.map((category) => ({
-          category,
-          rows: ownerRows
-            .filter((row) => row.category === category)
-            .sort((a, b) => b.points - a.points),
-        })),
-      };
+    .map((owner) => ({
+      owner,
+      rows: byOwner[owner],
+      categories: groupByCategory(byOwner[owner]),
+    }));
+}
+
+/**
+ * Program identity across people. A bank program is its provider and
+ * currency. An airline or hotel program is its provider alone, since the
+ * program name there is each member's status tier.
+ */
+function getProgramKey(row) {
+  return row.category === "Bank" ? `${row.provider}|${row.programName}` : row.provider;
+}
+
+/**
+ * Combines rows of the same program into one household row. A program held
+ * by one row passes through unchanged. A combined row sums the points, lists
+ * each owner's share in `parts`, and takes the oldest update time, since a
+ * total is only as fresh as its stalest part.
+ */
+function combineByProgram(rows) {
+  const byProgram = {};
+  rows.forEach((row) => {
+    const key = getProgramKey(row);
+    (byProgram[key] = byProgram[key] || []).push(row);
+  });
+
+  return Object.values(byProgram).map((group) => {
+    if (group.length === 1) return group[0];
+
+    const shares = {};
+    group.forEach((row) => {
+      shares[row.owner] = (shares[row.owner] || 0) + row.points;
     });
+    const oldest = group.reduce((a, b) =>
+      new Date(a.lastUpdated) <= new Date(b.lastUpdated) ? a : b,
+    );
+    const first = group[0];
+    return {
+      ...first,
+      combined: true,
+      title: first.category === "Bank" ? `${first.provider} — ${first.programName}` : first.provider,
+      parts: Object.entries(shares)
+        .map(([owner, points]) => ({ owner, points }))
+        .sort((a, b) => b.points - a.points),
+      points: group.reduce((sum, row) => sum + row.points, 0),
+      lastUpdated: oldest.lastUpdated,
+      lastChanged: null,
+      change: 0,
+      members: group.flatMap((row) => row.members),
+    };
+  });
 }
 
 /**
@@ -142,7 +194,10 @@ if (typeof module !== "undefined" && module.exports) {
     getOwnerRef,
     resolveOwner,
     poolAccounts,
+    groupByCategory,
     groupByOwner,
+    getProgramKey,
+    combineByProgram,
     listPeople,
     setOwner,
     removeAccounts,

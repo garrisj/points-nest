@@ -8,6 +8,7 @@ let scraperConfigs = null;
 let programValuations = null;
 let activeModalAccount = null;
 let knownPeople = [];
+let currentViewMode = "person";
 
 document.addEventListener("DOMContentLoaded", () => {
   chrome.runtime.sendMessage({ type: "POPUP_OPENED" }).catch(() => {});
@@ -17,10 +18,20 @@ document.addEventListener("DOMContentLoaded", () => {
   setupImportModal();
 
   // Load preferred display mode and bind click listener
-  store.get(["displayMode"], (result) => {
+  store.get(["displayMode", "viewMode"], (result) => {
     currentDisplayMode = result.displayMode || "pts";
+    currentViewMode = result.viewMode || "person";
     updateToggleUI();
     renderData();
+  });
+
+  // Switch between the person view and the combined program view
+  document.getElementById("toggle-view").addEventListener("click", () => {
+    currentViewMode = currentViewMode === "person" ? "program" : "person";
+    store.set({ viewMode: currentViewMode }, () => {
+      updateToggleUI();
+      renderData();
+    });
   });
 
   const toggleBtn = document.getElementById("toggle-display");
@@ -72,6 +83,12 @@ function updateToggleUI() {
     ptsLabel.classList.add("active");
     usdLabel.classList.remove("active");
   }
+
+  const viewBtn = document.getElementById("toggle-view");
+  const programActive = currentViewMode === "program";
+  viewBtn.classList.toggle("program-active", programActive);
+  viewBtn.querySelector(".person-label").classList.toggle("active", !programActive);
+  viewBtn.querySelector(".program-label").classList.toggle("active", programActive);
 }
 
 async function loadConfig() {
@@ -162,15 +179,27 @@ async function renderData() {
       return;
     }
 
-    // Group by owner, then balance the owner groups across up to two columns
-    const ownerGroups = groupByOwner(accounts);
+    // Build the sections for the chosen view: one per person, or one per
+    // category with each program combined across people
     knownPeople = listPeople(accounts);
-    const columns = ownerGroups.length === 1 ? [[]] : [[], []];
+    const sections =
+      currentViewMode === "program"
+        ? groupByCategory(combineByProgram(accounts)).map(({ category, rows }) => ({
+            size: rows.length,
+            build: () => createCategoryGroup(category, rows, configs, valuations),
+          }))
+        : groupByOwner(accounts).map((group) => ({
+            size: group.rows.length,
+            build: () => createOwnerGroup(group, configs, valuations),
+          }));
+
+    // Balance the sections across up to two columns
+    const columns = sections.length === 1 ? [[]] : [[], []];
     const columnRows = columns.map(() => 0);
-    ownerGroups.forEach((group) => {
+    sections.forEach((section) => {
       const i = columns.length === 1 || columnRows[0] <= columnRows[1] ? 0 : 1;
-      columns[i].push(group);
-      columnRows[i] += group.rows.length;
+      columns[i].push(section);
+      columnRows[i] += section.size;
     });
 
     document.body.classList.toggle("two-column", columns.length === 2);
@@ -178,8 +207,8 @@ async function renderData() {
     columns.forEach((column) => {
       const colDiv = document.createElement("div");
       colDiv.className = "accounts-column";
-      column.forEach((group) => {
-        colDiv.appendChild(createOwnerGroup(group, configs, valuations));
+      column.forEach((section) => {
+        colDiv.appendChild(section.build());
       });
       accountsListContainer.appendChild(colDiv);
     });
@@ -241,21 +270,26 @@ function createCategoryGroup(cat, items, configs, valuations) {
   items.forEach((account) => {
     const clone = cardTemplate.content.cloneNode(true);
     const updatedTime = getRelativeTime(account.lastUpdated);
-    const displayName =
-      account.members.length > 1
-        ? `Pool of ${account.members.length} cards`
-        : `${account.accountName} (${account.accountId})`;
     const siteConfig = configs.find((c) => c.siteName === account.provider);
     const iconUrl = siteConfig ? siteConfig.icon : "";
 
     const cpp = getValuationCpp(account, valuations);
+    const formatAmount = (points) =>
+      currentDisplayMode === "usd" ? `$${formatCurrency(points * (cpp / 100))}` : formatNumber(points);
+    let displayName = `${account.accountName} (${account.accountId})`;
+    if (account.combined) {
+      // Each owner's share of a combined program
+      displayName = account.parts.map((p) => `${p.owner} ${formatAmount(p.points)}`).join(" · ");
+    } else if (account.members.length > 1) {
+      displayName = `Pool of ${account.members.length} cards`;
+    }
     const pointsDisplay =
       currentDisplayMode === "usd"
         ? `$${formatCurrency(account.points * (cpp / 100))}`
         : formatNumber(account.points);
 
     bindData(clone, {
-      title: `${account.provider} — ${account.programName}`,
+      title: account.title || `${account.provider} — ${account.programName}`,
       account: displayName,
       points: pointsDisplay,
       updated: `Updated ${updatedTime}`,
@@ -318,8 +352,9 @@ function createCategoryGroup(cat, items, configs, valuations) {
       });
     }
 
-    // Click on the card opens the balance history line chart modal
-    if (cardEl) {
+    // Click on the card opens the balance history line chart modal.
+    // A combined row has no single history, so it does not open one.
+    if (cardEl && !account.combined) {
       cardEl.classList.add("clickable");
       cardEl.setAttribute("title", `View balance history for ${displayName}`);
       cardEl.addEventListener("click", () => {

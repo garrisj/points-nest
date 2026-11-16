@@ -778,3 +778,17 @@ body.two-column {
   margin-left: 0;
   align-self: flex-start;
 }
+
+/* View toggle: person or program (owners.js) */
+.view-toggle-btn {
+  width: 126px;
+  margin-right: var(--spacing-sm);
+}
+
+.view-toggle-btn .toggle-slider {
+  width: 59px;
+}
+
+.view-toggle-btn.program-active .toggle-slider {
+  transform: translateX(61px);
+}
