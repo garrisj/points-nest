@@ -14,6 +14,8 @@
 const SCHEMA_VERSION = 2;
 const HOLDING_TYPES = ["balance", "certificate", "credit", "funds", "status"];
 const WRITE_THROTTLE_MS = 60000;
+// Extra values a site config may declare for a balance (see fields.js)
+const BALANCE_FIELDS = ["expiresOn", "expiringAmount"];
 
 function slug(text) {
   return String(text)
@@ -49,11 +51,24 @@ function splitProgramName(category, provider, programName) {
 }
 
 /**
+ * Picks the balance fields a capture declared ("balance.expiresOn" and so
+ * on). A field the capture did not declare is left out, and so left alone.
+ */
+function getBalanceFields(capture) {
+  const fields = {};
+  BALANCE_FIELDS.forEach((name) => {
+    const value = (capture.fields || {})[`balance.${name}`];
+    if (value !== undefined) fields[name] = value;
+  });
+  return fields;
+}
+
+/**
  * Applies one capture from content.js to the state, in place.
  *
  * A changed balance rewrites the account and its balance holding. An
  * unchanged balance refreshes the name, tier and last-seen time, at most
- * once per WRITE_THROTTLE_MS unless the name or tier differs.
+ * once per WRITE_THROTTLE_MS unless the name, tier or a declared field differs.
  *
  * Returns { accountKey, holdingId, write, balanceChanged }. `write` tells the
  * caller whether the state changed and needs saving.
@@ -66,13 +81,18 @@ function applyCapture(state, capture, now) {
   const holding = state.holdings[holdingId];
   const seenAt = capture.lastUpdated;
 
+  const fields = getBalanceFields(capture);
+
   const isNew = !account || !holding;
   const balanceChanged = isNew || holding.amount !== capture.points;
   const result = { accountKey, holdingId, write: true, balanceChanged };
 
   if (!balanceChanged) {
     const detailsChanged =
-      account.accountName !== capture.accountName || account.tier !== tier || account.currency !== currency;
+      account.accountName !== capture.accountName ||
+      account.tier !== tier ||
+      account.currency !== currency ||
+      Object.keys(fields).some((name) => holding[name] !== fields[name]);
     const elapsed = now - new Date(holding.lastSeenAt).getTime();
     if (!detailsChanged && elapsed <= WRITE_THROTTLE_MS) {
       result.write = false;
@@ -115,10 +135,10 @@ function applyCapture(state, capture, now) {
       lastChange: holding ? capture.points - holding.amount : null,
       lastChangedAt: seenAt,
       lastSeenAt: seenAt,
+      ...fields,
     };
   } else {
-    holding.label = currency;
-    holding.lastSeenAt = seenAt;
+    Object.assign(holding, fields, { label: currency, lastSeenAt: seenAt });
   }
 
   return result;
@@ -142,6 +162,8 @@ function toRows(state) {
         lastUpdated: holding.lastSeenAt,
         lastChanged: holding.lastChangedAt,
         change: holding.lastChange,
+        expiresOn: holding.expiresOn,
+        expiringAmount: holding.expiringAmount,
       };
     })
     .filter(Boolean);

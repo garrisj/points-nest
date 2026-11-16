@@ -59,7 +59,7 @@
         "https://www.wyndhamhotels.com/*",
         "https://www.southwest.com/*"
       ],
-      "js": ["content.js"],
+      "js": ["fields.js", "content.js"],
       "run_at": "document_end"
     }
   ],

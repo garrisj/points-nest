@@ -60,7 +60,7 @@ function isValidConfig(config) {
  * Iterates through the array and evaluates each selector in strict priority order.
  * Supports inlined Scrapy-style attribute extraction syntax: "selector::attr(attributeName)".
  */
-function extractText(selectorInput) {
+function extractText(selectorInput, optional = false) {
   if (!selectorInput) return null;
 
   // Standardize single strings into arrays
@@ -90,9 +90,11 @@ function extractText(selectorInput) {
     }
   }
 
-  console.warn(
-    `[Points Nest] Selector "${JSON.stringify(selectorInput)}" did not match any element on the page.`,
-  );
+  if (!optional) {
+    console.warn(
+      `[Points Nest] Selector "${JSON.stringify(selectorInput)}" did not match any element on the page.`,
+    );
+  }
   return null;
 }
 
@@ -171,6 +173,8 @@ async function scrapeData(config) {
     accountId: accountId,
     programName: programName,
     points: rewardsPoints,
+    // Optional extras from the same page (see fields.js)
+    fields: readFields(config.fields, (selector) => extractText(selector, true)),
     lastUpdated: new Date().toISOString(),
     scrapedUrl: window.location.href,
   };

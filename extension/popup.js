@@ -259,6 +259,21 @@ function createOwnerGroup(group, configs, valuations) {
 /**
  * Creates and returns a styled category group element.
  */
+/**
+ * Returns a short expiry note for a card, such as " · 5,000 expire May 1,
+ * 2027", or an empty string when the row has no expiry date.
+ */
+function formatExpiry(account) {
+  if (account.combined || !account.expiresOn) return "";
+  const date = new Date(`${account.expiresOn}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const partial = account.expiringAmount != null && account.expiringAmount !== account.points;
+  return partial ? ` · ${formatNumber(account.expiringAmount)} expire ${date}` : ` · Expires ${date}`;
+}
+
 function createCategoryGroup(cat, items, configs, valuations) {
   const groupDiv = document.createElement("div");
   groupDiv.className = "category-group";
@@ -296,7 +311,7 @@ function createCategoryGroup(cat, items, configs, valuations) {
       title: account.title || `${account.provider} — ${account.programName}`,
       account: displayName,
       points: pointsDisplay,
-      updated: `Updated ${updatedTime}`,
+      updated: `Updated ${updatedTime}${formatExpiry(account)}`,
       icon: iconUrl,
     });
 

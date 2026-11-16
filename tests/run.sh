@@ -3,6 +3,7 @@
 set -e
 cd "$(dirname "$0")"
 node model.test.js
+node fields.test.js
 node migrate.test.js "$@"
 node household.test.js
 node background.test.js
