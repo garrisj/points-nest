@@ -14,7 +14,9 @@ document.addEventListener("DOMContentLoaded", () => {
   chrome.runtime.sendMessage({ type: "POPUP_OPENED" }).catch(() => {});
 
   setupModalListeners();
-  document.getElementById("export-btn").addEventListener("click", downloadExport);
+  document.getElementById("export-btn").addEventListener("click", async () => {
+    downloadExport(await loadConfig());
+  });
   setupImportModal();
 
   // Load preferred display mode and bind click listener

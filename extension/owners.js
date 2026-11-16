@@ -30,23 +30,43 @@ function resolveOwner(account, owners) {
 }
 
 /**
- * Turns stored accounts into display rows. Cards of a pooled program
- * (config flag `pooled`) with the same owner merge into one row, and the
- * newest capture supplies the balance. Each row lists its `members`.
+ * Names of the providers whose cards share one balance per owner (config
+ * flag `pooled`).
+ */
+function getPooledProviders(configs) {
+  return new Set(configs.filter((c) => c.pooled).map((c) => c.siteName));
+}
+
+/**
+ * The one pooling rule, used by the popup and by export. Returns the pool
+ * ID for an account of a pooled program with an assigned owner: provider +
+ * program + owner. Returns null for any other account.
+ */
+function getPoolId(account, owner, pooledProviders) {
+  if (!pooledProviders.has(account.provider) || owner === UNASSIGNED) return null;
+  return `${account.provider}_${account.programName}_${owner}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "_");
+}
+
+/**
+ * Turns stored accounts into display rows. Accounts with the same pool ID
+ * merge into one row, and the newest capture supplies the balance. Each row
+ * lists its `members`.
  */
 function poolAccounts(accounts, owners, configs) {
-  const pooledProviders = new Set(configs.filter((c) => c.pooled).map((c) => c.siteName));
+  const pooledProviders = getPooledProviders(configs);
   const rows = [];
   const pools = {};
 
   accounts.forEach((account) => {
     const owner = resolveOwner(account, owners);
     const row = { ...account, owner, members: [account] };
-    if (!pooledProviders.has(account.provider) || owner === UNASSIGNED) {
+    const poolKey = getPoolId(account, owner, pooledProviders);
+    if (!poolKey) {
       rows.push(row);
       return;
     }
-    const poolKey = `${account.provider}|${account.programName}|${owner}`;
     const pool = pools[poolKey];
     if (!pool) {
       pools[poolKey] = row;
@@ -193,6 +213,8 @@ if (typeof module !== "undefined" && module.exports) {
     UNASSIGNED,
     getOwnerRef,
     resolveOwner,
+    getPooledProviders,
+    getPoolId,
     poolAccounts,
     groupByCategory,
     groupByOwner,

@@ -7,21 +7,32 @@
 const EXPORT_VERSION = 1;
 
 /**
- * Builds the export from a full storage snapshot.
- * `accounts` holds one readable record per account with its owner and its
- * decoded balance history. `raw` holds storage as-is, for a later restore.
+ * Builds the export from a full storage snapshot and the site configs.
+ * `accounts` holds one readable record per account with its owner, its
+ * balance group and its decoded balance history. `raw` holds storage as-is,
+ * for a later restore.
+ *
+ * `balanceGroup` is the pool ID from owners.js, worked out from the owner
+ * assignments in the snapshot: accounts that share it share one balance, so
+ * a reader must count that balance once. It is null for an account that is
+ * not pooled.
  */
-function buildExport(data, exportedAt) {
+function buildExport(data, exportedAt, configs) {
   const owners = data[OWNERS_KEY] || {};
-  const accounts = Object.entries(data.latestBalances || {}).map(([key, account]) => ({
-    key,
-    owner: resolveOwner(account, owners),
-    ...account,
-    history: parseHistoryEntries(data[key]).map((entry) => ({
-      timestamp: new Date(entry.timestamp).toISOString(),
-      points: entry.points,
-    })),
-  }));
+  const pooledProviders = getPooledProviders(configs);
+  const accounts = Object.entries(data.latestBalances || {}).map(([key, account]) => {
+    const owner = resolveOwner(account, owners);
+    return {
+      key,
+      owner,
+      balanceGroup: getPoolId(account, owner, pooledProviders),
+      ...account,
+      history: parseHistoryEntries(data[key]).map((entry) => ({
+        timestamp: new Date(entry.timestamp).toISOString(),
+        points: entry.points,
+      })),
+    };
+  });
 
   return { format: "points-nest-export", version: EXPORT_VERSION, exportedAt, accounts, raw: data };
 }
@@ -29,10 +40,10 @@ function buildExport(data, exportedAt) {
 /**
  * Reads all storage and downloads it as points-nest-YYYY-MM-DD.json.
  */
-function downloadExport() {
+function downloadExport(configs) {
   store.get(null, (data) => {
     const now = new Date();
-    const json = JSON.stringify(buildExport(data, now.toISOString()), null, 2);
+    const json = JSON.stringify(buildExport(data, now.toISOString(), configs), null, 2);
     const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
 
     const link = document.createElement("a");
