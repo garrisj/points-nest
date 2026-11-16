@@ -3,45 +3,23 @@
  * Chrome Extension background service worker.
  */
 
-importScripts("storage.js");
+importScripts("storage.js", "model.js", "migrate.js");
 
-let cachedBalances = null;
-let isCacheLoaded = false;
-const pendingQueue = [];
+// Captures run one at a time, after any pending storage migration. Each one
+// reads storage fresh, so it does not write back a stale copy over a change
+// the popup made earlier, such as an owner.
+let captureQueue = new Promise((resolve) => ensureMigrated(resolve));
 
-// Load from storage initially
-store.get(["latestBalances"], (result) => {
-  cachedBalances = result.latestBalances || {};
-  isCacheLoaded = true;
-  console.log("[Points Nest] Background cachedBalances loaded from storage sync:", cachedBalances);
-  // Process any queued scrapes that came in before the cache was loaded
-  while (pendingQueue.length > 0) {
-    const data = pendingQueue.shift();
-    processScrapedData(data);
-  }
-});
-
-// Also keep cache in sync with storage updates from elsewhere (e.g. popup clearing/updating storage, or other devices syncing)
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === STORAGE_AREA && changes.latestBalances) {
-    cachedBalances = changes.latestBalances.newValue || {};
-    console.log(
-      "[Points Nest] Background cachedBalances updated from storage change listener:",
-      cachedBalances,
-    );
-  }
-});
+function enqueueCapture(capture) {
+  captureQueue = captureQueue.then(() => new Promise((resolve) => processCapture(capture, resolve)));
+}
 
 // Listen for messages from content.js and popup.js
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === "POINTS_SCRAPED") {
     const data = message.payload;
     console.log("[Points Nest] Received scraped points in background:", data);
-    if (isCacheLoaded) {
-      processScrapedData(data);
-    } else {
-      pendingQueue.push(data);
-    }
+    enqueueCapture(data);
   } else if (message.type === "POPUP_OPENED") {
     // Update icon to clear "update" state (with red dot)
     updateIconForActiveTab();
@@ -119,39 +97,20 @@ function updateIconForActiveTab() {
   });
 }
 
-function processScrapedData(data) {
-  if (!cachedBalances) return;
-
-  const key = getAccountKey(data);
-  const existingData = cachedBalances[key];
-
-  if (!existingData || existingData.points !== data.points) {
-    // New account or account balance changed
-    data.lastChanged = data.lastUpdated;
-    data.change = existingData ? data.points - existingData.points : null;
-    cachedBalances[key] = data;
-    setIconState("update");
-    updateLatestBalances(cachedBalances);
-    updatePointsHistory(data);
-  } else {
-    // Balance has not changed, but we successfully checked it.
-    // Throttle storage writes (updates to lastUpdated) to once per minute to avoid sync write quota limits.
-    // The account name is refreshed when it differs, e.g. after a config fix.
-    const prevUpdated = existingData.lastUpdated;
-    const elapsed = Date.now() - new Date(prevUpdated).getTime();
-    const nameChanged = existingData.accountName !== data.accountName;
-    if (nameChanged || elapsed > 60000) {
-      existingData.accountName = data.accountName;
-      existingData.lastUpdated = data.lastUpdated;
-      cachedBalances[key] = existingData;
-      updateLatestBalances(cachedBalances);
-    }
-  }
-}
-
-function updateLatestBalances(balances) {
-  store.set({ latestBalances: balances }, () => {
-    console.log("[Points Nest] Points updated and synced to Chrome storage.");
+/**
+ * Applies one capture to stored state and saves it when something changed.
+ * A changed balance also appends to the holding's history.
+ */
+function processCapture(capture, done) {
+  loadState((state) => {
+    const result = applyCapture(state, capture, Date.now());
+    if (!result.write) return done();
+    if (result.balanceChanged) setIconState("update");
+    saveState(state, () => {
+      console.log("[Points Nest] Capture saved:", result.accountKey);
+      if (!result.balanceChanged) return done();
+      updatePointsHistory(getEventsKey(result.holdingId), capture, done);
+    });
   });
 }
 

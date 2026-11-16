@@ -49,8 +49,8 @@ function setupImportModal() {
       return;
     }
 
-    store.get(["latestBalances"], (result) => {
-      const current = Object.keys(result.latestBalances || {}).length;
+    loadState((state) => {
+      const current = Object.keys(state.accounts).length;
       const when = new Date(check.exportedAt).toLocaleString();
       status.textContent =
         `This file holds ${check.accounts} accounts, exported ${when}. ` +

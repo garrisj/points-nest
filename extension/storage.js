@@ -1,7 +1,11 @@
 /**
  * storage.js
- * Centralized data manipulation and storage utilities for Points Nest.
+ * The storage interface for Points Nest, plus the balance history helpers.
  * Shared between background service worker and popup dashboard.
+ *
+ * Every other file reads and writes through `store` (get, set, remove,
+ * clear) and listens through `onStoreChanged`. No other file touches
+ * chrome.storage, so the engine behind this file can change.
  */
 
 const MAX_HISTORY_ENTRIES = 100;
@@ -14,14 +18,12 @@ const STORAGE_AREA = "local";
 const store = chrome.storage[STORAGE_AREA];
 
 /**
- * Returns a consistent storage key for an account.
- * Format: {provider}_{programName}_{accountId} in lowercase alphanumeric.
+ * Calls the listener with the changes whenever stored data changes.
  */
-function getAccountKey(accountData) {
-  if (!accountData) return "";
-  return `${accountData.provider}_${accountData.programName}_${accountData.accountId}`
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "_");
+function onStoreChanged(listener) {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === STORAGE_AREA) listener(changes);
+  });
 }
 
 /**
@@ -80,11 +82,10 @@ function parseHistoryEntries(rawHistory) {
 }
 
 /**
- * Fetches points history for an account from chrome.storage.sync,
- * synthesizes a starting entry if empty, and anchors the latest check timestamp.
+ * Fetches the points history stored under `key`, synthesizes a starting
+ * entry from `account` if empty, and anchors the latest check timestamp.
  */
-function getAccountHistory(account, callback) {
-  const key = getAccountKey(account);
+function getAccountHistory(key, account, callback) {
   store.get([key], (result) => {
     const rawHistory = result[key] || [];
     const historyPoints = parseHistoryEntries(rawHistory);
@@ -119,12 +120,10 @@ function getAccountHistory(account, callback) {
 }
 
 /**
- * Appends a new balance entry to the account's history in Chrome sync storage
- * if the points balance has changed.
+ * Appends a new balance entry to the history stored under `key` if the
+ * points balance has changed.
  */
-function updatePointsHistory(data, callback) {
-  const key = getAccountKey(data);
-
+function updatePointsHistory(key, data, callback) {
   store.get([key], (result) => {
     const history = result[key] || [];
 
@@ -157,7 +156,8 @@ function updatePointsHistory(data, callback) {
 // Export for Node.js / testing environments
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    getAccountKey,
+    store,
+    onStoreChanged,
     encodeHistoryEntry,
     decodeHistoryEntry,
     parseHistoryEntries,

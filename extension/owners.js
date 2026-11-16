@@ -2,28 +2,19 @@
  * owners.js
  * Household layer for Points Nest: who owns each account, pooling of cards
  * that share one balance, and removal of dead entries. Kept apart from the
- * capture engine. Relies on `store` and `getAccountKey` from storage.js.
+ * capture engine. Works on the display rows from model.js `toRows`, and
+ * stores each owner on its account. Relies on storage.js and model.js.
  */
 
-const OWNERS_KEY = "owners";
 const UNASSIGNED = "Unassigned";
 const CATEGORY_ORDER = ["Bank", "Airline", "Hotel"];
 
 /**
- * Owner key: provider + account ID. It leaves out the program name so a
- * status tier change keeps the owner.
+ * Returns the owner set on the account. Airline and hotel accounts fall back
+ * to the member name on the account; bank cards stay unassigned until set.
  */
-function getOwnerRef(account) {
-  return `${account.provider}_${account.accountId}`.toLowerCase().replace(/[^a-z0-9]/g, "_");
-}
-
-/**
- * Returns the stored owner. Airline and hotel accounts fall back to the
- * member name on the account; bank cards stay unassigned until set.
- */
-function resolveOwner(account, owners) {
-  const stored = owners[getOwnerRef(account)];
-  if (stored) return stored;
+function resolveOwner(account) {
+  if (account.owner) return account.owner;
   if (account.category === "Bank") return UNASSIGNED;
   // Title-case the fallback so "JANE" and "Jane" are one person
   return account.accountName.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
@@ -40,27 +31,25 @@ function getPooledProviders(configs) {
 /**
  * The one pooling rule, used by the popup and by export. Returns the pool
  * ID for an account of a pooled program with an assigned owner: provider +
- * program + owner. Returns null for any other account.
+ * currency + owner. Returns null for any other account.
  */
 function getPoolId(account, owner, pooledProviders) {
   if (!pooledProviders.has(account.provider) || owner === UNASSIGNED) return null;
-  return `${account.provider}_${account.programName}_${owner}`
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "_");
+  return slug(`${account.provider}_${account.currency}_${owner}`);
 }
 
 /**
- * Turns stored accounts into display rows. Accounts with the same pool ID
- * merge into one row, and the newest capture supplies the balance. Each row
- * lists its `members`.
+ * Resolves each row's owner and merges rows with the same pool ID into one,
+ * where the newest capture supplies the balance. Each row lists its
+ * `members`.
  */
-function poolAccounts(accounts, owners, configs) {
+function poolAccounts(accounts, configs) {
   const pooledProviders = getPooledProviders(configs);
   const rows = [];
   const pools = {};
 
   accounts.forEach((account) => {
-    const owner = resolveOwner(account, owners);
+    const owner = resolveOwner(account);
     const row = { ...account, owner, members: [account] };
     const poolKey = getPoolId(account, owner, pooledProviders);
     if (!poolKey) {
@@ -122,7 +111,7 @@ function groupByOwner(rows) {
  * program name there is each member's status tier.
  */
 function getProgramKey(row) {
-  return row.category === "Bank" ? `${row.provider}|${row.programName}` : row.provider;
+  return row.category === "Bank" ? `${row.provider}|${row.currency}` : row.provider;
 }
 
 /**
@@ -152,7 +141,7 @@ function combineByProgram(rows) {
     return {
       ...first,
       combined: true,
-      title: first.category === "Bank" ? `${first.provider} — ${first.programName}` : first.provider,
+      title: first.category === "Bank" ? `${first.provider} — ${first.currency}` : first.provider,
       parts: Object.entries(shares)
         .map(([owner, points]) => ({ owner, points }))
         .sort((a, b) => b.points - a.points),
@@ -176,32 +165,30 @@ function listPeople(rows) {
  * Sets the owner of the given accounts. An empty name clears it.
  */
 function setOwner(accounts, name, callback) {
-  store.get([OWNERS_KEY], (result) => {
-    const owners = result[OWNERS_KEY] || {};
+  loadState((state) => {
     accounts.forEach((account) => {
-      if (name) {
-        owners[getOwnerRef(account)] = name;
-      } else {
-        delete owners[getOwnerRef(account)];
+      if (state.accounts[account.accountKey]) {
+        state.accounts[account.accountKey].owner = name || null;
       }
     });
-    store.set({ [OWNERS_KEY]: owners }, callback);
+    saveState(state, callback);
   });
 }
 
 /**
- * Deletes the given accounts with their history and owner. A live account
- * returns on its next capture.
+ * Deletes the given accounts with their holdings and history. A live
+ * account returns on its next capture.
  */
 function removeAccounts(accounts, callback) {
-  store.get(["latestBalances", OWNERS_KEY], (result) => {
-    const latestBalances = result.latestBalances || {};
-    const owners = result[OWNERS_KEY] || {};
-    const keys = accounts.map(getAccountKey);
-    keys.forEach((key) => delete latestBalances[key]);
-    accounts.forEach((account) => delete owners[getOwnerRef(account)]);
-    store.set({ latestBalances, [OWNERS_KEY]: owners }, () => {
-      store.remove(keys, callback);
+  loadState((state) => {
+    const accountKeys = new Set(accounts.map((account) => account.accountKey));
+    const holdingIds = Object.values(state.holdings)
+      .filter((holding) => accountKeys.has(holding.accountKey))
+      .map((holding) => holding.holdingId);
+    accountKeys.forEach((key) => delete state.accounts[key]);
+    holdingIds.forEach((id) => delete state.holdings[id]);
+    saveState(state, () => {
+      store.remove(holdingIds.map(getEventsKey), callback);
     });
   });
 }
@@ -209,9 +196,7 @@ function removeAccounts(accounts, callback) {
 // Export for Node.js / testing environments
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    OWNERS_KEY,
     UNASSIGNED,
-    getOwnerRef,
     resolveOwner,
     getPooledProviders,
     getPoolId,

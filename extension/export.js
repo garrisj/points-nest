@@ -1,40 +1,54 @@
 /**
  * export.js
- * Backup of all tracked data as one JSON file. Relies on `store` and
- * `parseHistoryEntries` from storage.js and on owners.js.
+ * Backup of all tracked data as one JSON file, and restore from it.
+ * The file is the contract with any outside reader. Relies on storage.js,
+ * model.js and owners.js.
  */
 
-const EXPORT_VERSION = 1;
+const EXPORT_VERSION = 2;
 
 /**
  * Builds the export from a full storage snapshot and the site configs.
- * `accounts` holds one readable record per account with its owner, its
- * balance group and its decoded balance history. `raw` holds storage as-is,
- * for a later restore.
  *
- * `balanceGroup` is the pool ID from owners.js, worked out from the owner
- * assignments in the snapshot: accounts that share it share one balance, so
- * a reader must count that balance once. It is null for an account that is
- * not pooled.
+ * - `accounts`: one record per account, with its resolved `owner` (null when
+ *   unassigned) and its `balanceGroup`.
+ * - `holdings`: one record per holding, linked by `accountKey`.
+ * - `events`: every recorded balance change, linked by `holdingId`.
+ * - `raw`: storage as-is, the only part a restore reads.
+ *
+ * `balanceGroup` is the pool ID from owners.js, worked out from the current
+ * owners: accounts that share it share one balance, so a reader must count
+ * that balance once. It is null for an account that is not pooled.
  */
 function buildExport(data, exportedAt, configs) {
-  const owners = data[OWNERS_KEY] || {};
   const pooledProviders = getPooledProviders(configs);
-  const accounts = Object.entries(data.latestBalances || {}).map(([key, account]) => {
-    const owner = resolveOwner(account, owners);
+  const accounts = Object.values(data.accounts || {}).map((account) => {
+    const owner = resolveOwner(account);
     return {
-      key,
-      owner,
-      balanceGroup: getPoolId(account, owner, pooledProviders),
       ...account,
-      history: parseHistoryEntries(data[key]).map((entry) => ({
-        timestamp: new Date(entry.timestamp).toISOString(),
-        points: entry.points,
-      })),
+      owner: owner === UNASSIGNED ? null : owner,
+      balanceGroup: getPoolId(account, owner, pooledProviders),
     };
   });
+  const holdings = Object.values(data.holdings || {});
+  const events = holdings.flatMap((holding) =>
+    parseHistoryEntries(data[getEventsKey(holding.holdingId)]).map((entry) => ({
+      holdingId: holding.holdingId,
+      at: new Date(entry.timestamp).toISOString(),
+      kind: "changed",
+      amount: entry.points,
+    })),
+  );
 
-  return { format: "points-nest-export", version: EXPORT_VERSION, exportedAt, accounts, raw: data };
+  return {
+    format: "points-nest-export",
+    version: EXPORT_VERSION,
+    exportedAt,
+    accounts,
+    holdings,
+    events,
+    raw: data,
+  };
 }
 
 /**
@@ -66,14 +80,21 @@ function validateExport(file) {
   if (typeof file.version !== "number" || file.version > EXPORT_VERSION) {
     return fail("That export comes from a newer version of the extension.");
   }
-  const balances = file.raw && file.raw.latestBalances;
-  if (!balances || typeof balances !== "object" || Array.isArray(balances)) {
+  if (file.version < EXPORT_VERSION) {
+    return fail(`That export uses the old version ${file.version} format, which this version cannot restore.`);
+  }
+  const isMap = (value) => value && typeof value === "object" && !Array.isArray(value);
+  const raw = file.raw;
+  if (!isMap(raw) || raw.schemaVersion !== SCHEMA_VERSION || !isMap(raw.accounts) || !isMap(raw.holdings)) {
     return fail("That export holds no stored data to restore.");
   }
-  const accounts = Object.values(balances);
-  const valid = (a) => a && a.provider && a.accountId !== undefined && typeof a.points === "number";
-  if (!accounts.every(valid)) {
+  const accounts = Object.values(raw.accounts);
+  if (!accounts.every((a) => a && a.accountKey && a.provider && a.accountId !== undefined)) {
     return fail("That export holds an account record that is not complete.");
+  }
+  const holdings = Object.values(raw.holdings);
+  if (!holdings.every((h) => h && raw.accounts[h.accountKey] && typeof h.amount === "number")) {
+    return fail("That export holds a holding record that is not complete.");
   }
   return { ok: true, accounts: accounts.length, exportedAt: file.exportedAt };
 }

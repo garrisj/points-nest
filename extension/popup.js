@@ -19,12 +19,14 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   setupImportModal();
 
-  // Load preferred display mode and bind click listener
-  store.get(["displayMode", "viewMode"], (result) => {
-    currentDisplayMode = result.displayMode || "pts";
-    currentViewMode = result.viewMode || "person";
-    updateToggleUI();
-    renderData();
+  // Load preferred display mode once any pending storage migration has run
+  ensureMigrated(() => {
+    store.get(["displayMode", "viewMode"], (result) => {
+      currentDisplayMode = result.displayMode || "pts";
+      currentViewMode = result.viewMode || "person";
+      updateToggleUI();
+      renderData();
+    });
   });
 
   // Switch between the person view and the combined program view
@@ -49,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Listen for storage changes to refresh UI instantly
-  chrome.storage.onChanged.addListener((changes) => {
+  onStoreChanged((changes) => {
     if (changes.displayMode) {
       currentDisplayMode = changes.displayMode.newValue;
       updateToggleUI();
@@ -57,16 +59,16 @@ document.addEventListener("DOMContentLoaded", () => {
       if (activeModalAccount) {
         openHistoryModal(activeModalAccount, programValuations, scraperConfigs);
       }
-    } else if (changes.latestBalances || changes[OWNERS_KEY]) {
-      renderData();
-      if (activeModalAccount && changes.latestBalances) {
-        const updatedBalances = changes.latestBalances.newValue || {};
-        const key = getAccountKey(activeModalAccount);
-        if (updatedBalances[key]) {
-          activeModalAccount = { ...activeModalAccount, ...updatedBalances[key] };
-          openHistoryModal(activeModalAccount, programValuations, scraperConfigs);
+    } else if (changes.accounts || changes.holdings) {
+      // Re-render, then refresh the open history window from the new rows
+      renderData((rows) => {
+        if (!activeModalAccount) return;
+        const openKey = activeModalAccount.accountKey;
+        const fresh = rows.find((row) => row.members.some((m) => m.accountKey === openKey));
+        if (fresh) {
+          openHistoryModal(fresh, programValuations, scraperConfigs);
         }
-      }
+      });
     }
   });
 });
@@ -150,14 +152,14 @@ function getValuationCpp(account, valuations) {
   return 1.0;
 }
 
-async function renderData() {
+async function renderData(afterRender) {
   const configs = await loadConfig();
   const valuations = await loadValuations();
 
-  store.get(["latestBalances", OWNERS_KEY], (result) => {
-    const latestBalances = result.latestBalances || {};
-    const owners = result[OWNERS_KEY] || {};
-    const accounts = poolAccounts(Object.values(latestBalances), owners, configs);
+  loadState((state) => {
+    const accounts = poolAccounts(toRows(state), configs);
+    // Runs once this render pass ends, on every path out of it
+    if (afterRender) setTimeout(() => afterRender(accounts), 0);
     const overallTotal = accounts.reduce((sum, account) => sum + account.points, 0);
 
     const titleTotalEl = document.getElementById("title-total");
@@ -571,7 +573,7 @@ function openHistoryModal(account, valuations, configs) {
   }
 
   // Fetch points history using storage.js and render using chart.js
-  getAccountHistory(account, (historyPoints) => {
+  getAccountHistory(getEventsKey(account.holdingId), account, (historyPoints) => {
     renderHistoryChart(historyPoints, account, valuations, currentDisplayMode);
   });
 }
