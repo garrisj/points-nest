@@ -334,5 +334,36 @@
         "replace": "$1"
       }
     }
+  },
+  {
+    "siteName": "Southwest Rapid Rewards",
+    "category": "Airline",
+    "icon": "",
+    "urlRegex": "https://www\\.southwest\\.com/loyalty/myaccount",
+    "selectors": {
+      "accountName": "[class*=\"greeting__\"] [class*=\"name__\"]",
+      "accountId": "[class*=\"greeting__\"] .accountNumber",
+      "programName": "[class*=\"greeting__\"] > div:not([class*=\"name__\"])",
+      "rewardsValue": "[class*=\"pointsOrTravelCredits__\"] .currency [class*=\"hiddenFromScreen\"]"
+    },
+    "normalizations": {
+      "accountName": {
+        "pattern": "^Hi,\\s*([^\\s]+).*",
+        "replace": "$1",
+        "transform": "titlecase"
+      },
+      "accountId": {
+        "pattern": "^[\\s\\S]*?(\\d{6,})[\\s\\S]*$",
+        "replace": "$1"
+      },
+      "programName": {
+        "pattern": "^Rapid Rewards\\s+(.*?)\\s+since[\\s\\S]*$",
+        "replace": "$1"
+      },
+      "rewardsValue": {
+        "pattern": "^\\s*([\\d,]+)\\s*Points[\\s\\S]*$",
+        "replace": "$1"
+      }
+    }
   }
 ]

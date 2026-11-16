@@ -24,7 +24,8 @@
     "https://online.citi.com/*",
     "https://myaccounts.capitalone.com/*",
     "https://www.choicehotels.com/*",
-    "https://www.wyndhamhotels.com/*"
+    "https://www.wyndhamhotels.com/*",
+    "https://www.southwest.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -55,7 +56,8 @@
         "https://online.citi.com/*",
         "https://myaccounts.capitalone.com/*",
         "https://www.choicehotels.com/*",
-        "https://www.wyndhamhotels.com/*"
+        "https://www.wyndhamhotels.com/*",
+        "https://www.southwest.com/*"
       ],
       "js": ["content.js"],
       "run_at": "document_end"
@@ -78,7 +80,8 @@
         "https://online.citi.com/*",
         "https://myaccounts.capitalone.com/*",
         "https://www.choicehotels.com/*",
-        "https://www.wyndhamhotels.com/*"
+        "https://www.wyndhamhotels.com/*",
+        "https://www.southwest.com/*"
       ]
     }
   ]
