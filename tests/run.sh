@@ -8,3 +8,4 @@ node holdings.test.js
 node migrate.test.js "$@"
 node household.test.js
 node background.test.js
+node snapshot.test.js

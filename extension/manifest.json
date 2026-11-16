@@ -40,6 +40,11 @@
   "background": {
     "service_worker": "background.js"
   },
+  "commands": {
+    "snapshot-page": {
+      "description": "Developer: save a masked snapshot of this page"
+    }
+  },
   "content_scripts": [
     {
       "matches": [
@@ -59,7 +64,7 @@
         "https://www.wyndhamhotels.com/*",
         "https://www.southwest.com/*"
       ],
-      "js": ["fields.js", "content.js"],
+      "js": ["fields.js", "content.js", "snapshot.js"],
       "run_at": "document_end"
     }
   ],

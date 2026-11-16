@@ -26,6 +26,14 @@ chrome.runtime.onMessage.addListener((message) => {
   }
 });
 
+// Developer shortcut, unset by default: ask the page for a masked snapshot
+// (see snapshot.js). Pages outside the tracked sites have no listener.
+chrome.commands.onCommand.addListener((command, tab) => {
+  if (command === "snapshot-page" && tab) {
+    chrome.tabs.sendMessage(tab.id, { type: "SNAPSHOT_PAGE" }).catch(() => {});
+  }
+});
+
 // Listen for URL/navigation changes natively and notify content.js
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.url) {

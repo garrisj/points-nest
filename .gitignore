@@ -1,1 +1,6 @@
 output/
+
+# Private data: page snapshots and exports never belong in the repository
+points-nest-snapshot-*.html
+points-nest-20*.json
+snapshots/

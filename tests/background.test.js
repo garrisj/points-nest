@@ -15,6 +15,7 @@ global.chrome = {
   tabs: { onUpdated: noop, onActivated: noop, query() {} },
   windows: { onFocusChanged: noop },
   action: { setIcon() {} },
+  commands: { onCommand: noop },
 };
 global.fetch = () => new Promise(() => {});
 global.importScripts = (...files) => files.forEach((f) => vm.runInThisContext(fs.readFileSync(path.join(dir, f), "utf8")));
