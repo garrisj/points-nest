@@ -184,6 +184,19 @@ body.two-column {
   gap: var(--spacing-xs);
 }
 
+/* Expiry note on its own line, so a long one does not squeeze the name */
+.pts-expiry {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin-top: 1px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pts-expiry:empty {
+  display: none;
+}
+
 .status-dot {
   display: inline-block;
   width: 5px;
