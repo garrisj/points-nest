@@ -333,6 +333,18 @@
         "pattern": "^Member\\s*#\\s*([A-Z0-9]+)[\\s\\S]*$",
         "replace": "$1"
       }
+    },
+    "fields": {
+      "balance.expiresOn": {
+        "selector": "[data-testid=\"membership-points-info-card-expiration-message\"]",
+        "pattern": "expire on (\\d+/\\d+/\\d+)",
+        "parse": "date"
+      },
+      "balance.expiringAmount": {
+        "selector": "[data-testid=\"membership-points-info-card-expiration-message\"]",
+        "pattern": "^([\\d,]+) of your points",
+        "parse": "number"
+      }
     }
   },
   {

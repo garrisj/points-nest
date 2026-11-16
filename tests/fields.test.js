@@ -47,3 +47,10 @@ applyCapture(state, capture({ points: 950, fields: { "balance.expiresOn": null, 
 assert.deepStrictEqual([holding().expiresOn, holding().expiringAmount, "hacked" in holding()], [null, 500, false]);
 assert.strictEqual(toRows(state)[0].expiresOn, null);
 console.log("ok fields");
+
+// Site rules read the text their pages show.
+const sites = require("../extension/site-config.json");
+const fieldsOf = (site, text) => readFields(sites.find((s) => s.siteName === site).fields, () => text);
+assert.deepStrictEqual(fieldsOf("Wyndham Rewards", "15,000 of your points will expire on 05/31/2027."), { "balance.expiresOn": "2027-05-31", "balance.expiringAmount": 15000 });
+assert.deepStrictEqual(fieldsOf("Wyndham Rewards", "Stay active to keep your points."), { "balance.expiresOn": null, "balance.expiringAmount": null });
+console.log("ok site fields");
