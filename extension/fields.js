@@ -83,7 +83,58 @@ function readFields(fieldRules, getText) {
   return fields;
 }
 
+/**
+ * Reads the rows a config declares under `lists`. Each list names a holding
+ * type, a `row` selector, and rules read inside each row:
+ *
+ *   "lists": [{
+ *     "type": "funds",
+ *     "row": ".fund-row",
+ *     "label": "Travel Funds",
+ *     "amount": { "selector": ".amount", "parse": "money" },
+ *     "expiresOn": { "selector": ".expiry", "parse": "date" }
+ *   }]
+ *
+ * `label` is fixed text or a rule. `amount` is required. `expiresOn`,
+ * `total` and `id` are optional rules, and `unit` is optional text. A rule
+ * with no selector reads the row's own text.
+ *
+ * `getRows` finds the row elements; `getText` finds a selector's text inside
+ * a row. Returns { type: [items] }. A list with a row it cannot read is
+ * left out whole, so its stored holdings stay as they are.
+ */
+function readLists(listRules, getRows, getText) {
+  const lists = {};
+  const failed = new Set();
+
+  (listRules || []).forEach((list) => {
+    const read = (row, rule) => parseField(getText(rule.selector, row), rule);
+    const items = getRows(list.row).map((row) => {
+      const item = {
+        label: typeof list.label === "string" ? list.label : read(row, { parse: "text", ...list.label }),
+        amount: read(row, list.amount),
+        unit: list.unit,
+      };
+      ["expiresOn", "total", "id"].forEach((name) => {
+        if (list[name]) item[name] = read(row, list[name]);
+      });
+      // An optional rule that is declared must still read, except expiry
+      const complete = item.label && item.amount != null && (!list.id || item.id) && (!list.total || item.total != null);
+      return complete ? item : null;
+    });
+
+    if (items.includes(null)) failed.add(list.type);
+    lists[list.type] = (lists[list.type] || []).concat(items);
+  });
+
+  failed.forEach((type) => {
+    console.warn(`[Points Nest] A "${type}" row did not read cleanly; that list was skipped.`);
+    delete lists[type];
+  });
+  return lists;
+}
+
 // Export for Node.js / testing environments
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { parseField, readFields };
+  module.exports = { parseField, readFields, readLists };
 }

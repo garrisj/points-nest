@@ -1,7 +1,7 @@
 // Field parsers, and declared fields flowing onto the balance holding.
 const assert = require("assert");
 const { load } = require("./harness");
-load(["storage.js", "model.js", "fields.js"]);
+load(["storage.js", "model.js", "holdings.js", "fields.js"]);
 
 const parse = (text, parseAs, pattern) => parseField(text, { parse: parseAs, pattern });
 

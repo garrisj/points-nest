@@ -260,18 +260,40 @@ function createOwnerGroup(group, configs, valuations) {
  * Creates and returns a styled category group element.
  */
 /**
+ * Formats a stored YYYY-MM-DD date as "May 1, 2027".
+ */
+function formatDate(isoDate) {
+  return new Date(`${isoDate}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/**
  * Returns a short expiry note for a card, such as "5,000 expire May 1, 2027",
  * or an empty string when the row has no expiry date.
  */
 function formatExpiry(account) {
   if (account.combined || !account.expiresOn) return "";
-  const date = new Date(`${account.expiresOn}T00:00:00`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const date = formatDate(account.expiresOn);
   const partial = account.expiringAmount != null && account.expiringAmount !== account.points;
   return partial ? `${formatNumber(account.expiringAmount)} expire ${date}` : `Expires ${date}`;
+}
+
+/**
+ * Returns one short line per holding beside the balance, such as "$239.40
+ * Travel Funds · exp May 1, 2027". A pooled row lists those of every member.
+ */
+function formatExtras(account) {
+  if (account.combined) return [];
+  return account.members
+    .flatMap((member) => member.extras || [])
+    .map((holding) => {
+      const amount = holding.unit === "USD" ? `$${formatCurrency(holding.amount)}` : formatNumber(holding.amount);
+      const expiry = holding.expiresOn ? ` · exp ${formatDate(holding.expiresOn)}` : "";
+      return `${amount} ${holding.label}${expiry}`;
+    });
 }
 
 function createCategoryGroup(cat, items, configs, valuations) {
@@ -314,6 +336,14 @@ function createCategoryGroup(cat, items, configs, valuations) {
       updated: `Updated ${updatedTime}`,
       expiry: formatExpiry(account),
       icon: iconUrl,
+    });
+
+    const extrasEl = clone.querySelector(".pts-extras");
+    formatExtras(account).forEach((line) => {
+      const lineEl = document.createElement("div");
+      lineEl.className = "pts-note";
+      lineEl.textContent = line;
+      extrasEl.appendChild(lineEl);
     });
 
     // Add change indicators if changed recently (e.g. within last 24 hours)

@@ -3,7 +3,7 @@
  * Chrome Extension background service worker.
  */
 
-importScripts("storage.js", "model.js", "migrate.js");
+importScripts("storage.js", "model.js", "holdings.js", "migrate.js");
 
 // Captures run one at a time, after any pending storage migration. Each one
 // reads storage fresh, so it does not write back a stale copy over a change

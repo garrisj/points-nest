@@ -23,7 +23,7 @@ const v1 = {
   chase_ultimate_rewards_8959: [hist("2026-01-05T00:00:00Z", 40)],
 };
 
-const storage = load(["storage.js", "model.js", "migrate.js"], v1);
+const storage = load(["storage.js", "model.js", "holdings.js", "migrate.js"], v1);
 assert.strictEqual(migrateV1({}), null, "fresh install: nothing to do");
 
 const plan = migrateV1(v1);

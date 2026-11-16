@@ -1,7 +1,7 @@
 // Model: account keys, capture handling, and display rows.
 const assert = require("assert");
 const { load } = require("./harness");
-load(["storage.js", "model.js"]);
+load(["storage.js", "model.js", "holdings.js"]);
 
 const capture = (over = {}) => ({
   provider: "Alaska Atmos", category: "Airline", programName: "Member", accountName: "Pat",

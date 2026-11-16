@@ -3,12 +3,12 @@
  * The data model: accounts and holdings.
  *
  * An account is a membership or card. A holding is one thing of value inside
- * an account. Every account has one balance holding, and later holding types
- * (certificate, credit, funds, status) sit beside it.
+ * an account. Every account has one balance holding. The other holding types
+ * (certificate, credit, funds, status) sit beside it and live in holdings.js.
  *
  * Stored keys: `schemaVersion`, `accounts` (by account key), `holdings` (by
  * holding ID), and one `events:<holdingId>` history list per holding.
- * Relies on `store` from storage.js.
+ * Relies on `store` from storage.js, and on holdings.js.
  */
 
 const SCHEMA_VERSION = 2;
@@ -68,7 +68,7 @@ function getBalanceFields(capture) {
  *
  * A changed balance rewrites the account and its balance holding. An
  * unchanged balance refreshes the name, tier and last-seen time, at most
- * once per WRITE_THROTTLE_MS unless the name, tier or a declared field differs.
+ * once per WRITE_THROTTLE_MS unless the name, tier, a declared field or a listed holding differs.
  *
  * Returns { accountKey, holdingId, write, balanceChanged }. `write` tells the
  * caller whether the state changed and needs saving.
@@ -83,6 +83,8 @@ function applyCapture(state, capture, now) {
 
   const fields = getBalanceFields(capture);
 
+  const listsChanged = applyLists(state, accountKey, capture.lists, seenAt);
+
   const isNew = !account || !holding;
   const balanceChanged = isNew || holding.amount !== capture.points;
   const result = { accountKey, holdingId, write: true, balanceChanged };
@@ -94,7 +96,7 @@ function applyCapture(state, capture, now) {
       account.currency !== currency ||
       Object.keys(fields).some((name) => holding[name] !== fields[name]);
     const elapsed = now - new Date(holding.lastSeenAt).getTime();
-    if (!detailsChanged && elapsed <= WRITE_THROTTLE_MS) {
+    if (!detailsChanged && !listsChanged && elapsed <= WRITE_THROTTLE_MS) {
       result.write = false;
       return result;
     }
@@ -141,6 +143,7 @@ function applyCapture(state, capture, now) {
     Object.assign(holding, fields, { label: currency, lastSeenAt: seenAt });
   }
 
+  pruneGone(state, now);
   return result;
 }
 
@@ -164,6 +167,7 @@ function toRows(state) {
         change: holding.lastChange,
         expiresOn: holding.expiresOn,
         expiringAmount: holding.expiringAmount,
+        extras: getExtras(state, account.accountKey),
       };
     })
     .filter(Boolean);

@@ -184,8 +184,9 @@ body.two-column {
   gap: var(--spacing-xs);
 }
 
-/* Expiry note on its own line, so a long one does not squeeze the name */
-.pts-expiry {
+/* Notes under the update time, each on its own line, so a long one does
+   not squeeze the name */
+.pts-note {
   font-size: var(--font-size-xs);
   color: var(--text-secondary);
   margin-top: 1px;
@@ -193,7 +194,7 @@ body.two-column {
   white-space: nowrap;
 }
 
-.pts-expiry:empty {
+.pts-note:empty {
   display: none;
 }
 

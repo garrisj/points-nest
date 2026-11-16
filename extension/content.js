@@ -60,7 +60,7 @@ function isValidConfig(config) {
  * Iterates through the array and evaluates each selector in strict priority order.
  * Supports inlined Scrapy-style attribute extraction syntax: "selector::attr(attributeName)".
  */
-function extractText(selectorInput, optional = false) {
+function extractText(selectorInput, optional = false, root = document) {
   if (!selectorInput) return null;
 
   // Standardize single strings into arrays
@@ -76,7 +76,7 @@ function extractText(selectorInput, optional = false) {
       attrName = match[2].trim();
     }
 
-    const el = document.querySelector(selector);
+    const el = root.querySelector(selector);
     if (el) {
       let value = null;
       if (attrName) {
@@ -175,6 +175,12 @@ async function scrapeData(config) {
     points: rewardsPoints,
     // Optional extras from the same page (see fields.js)
     fields: readFields(config.fields, (selector) => extractText(selector, true)),
+    // Optional rows of other holdings, such as travel funds (see fields.js)
+    lists: readLists(
+      config.lists,
+      (selector) => [...document.querySelectorAll(selector)],
+      (selector, row) => (selector ? extractText(selector, true, row) : row.textContent),
+    ),
     lastUpdated: new Date().toISOString(),
     scrapedUrl: window.location.href,
   };

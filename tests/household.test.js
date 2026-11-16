@@ -1,7 +1,7 @@
 // Owners, pooling, removal, and the version 2 export round trip.
 const assert = require("assert");
 const { load } = require("./harness");
-const storage = load(["storage.js", "model.js", "owners.js", "export.js"]);
+const storage = load(["storage.js", "model.js", "holdings.js", "owners.js", "export.js"]);
 
 const configs = [{ siteName: "Amex", pooled: true }, { siteName: "Chase" }, { siteName: "Hyatt" }];
 const state = { accounts: {}, holdings: {} };

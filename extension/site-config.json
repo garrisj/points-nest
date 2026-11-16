@@ -376,6 +376,18 @@
         "pattern": "^\\s*([\\d,]+)\\s*Points[\\s\\S]*$",
         "replace": "$1"
       }
-    }
+    },
+    "lists": [
+      {
+        "type": "funds",
+        "row": "[class*=\"pointsOrTravelCredits__\"]:not(:last-of-type)",
+        "label": "Travel Funds",
+        "amount": {
+          "selector": ".currency [class*=\"hiddenFromScreen\"]",
+          "pattern": "^([\\d,.]+) Dollars$",
+          "parse": "money"
+        }
+      }
+    ]
   }
 ]
