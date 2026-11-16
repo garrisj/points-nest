@@ -338,7 +338,7 @@
   {
     "siteName": "Southwest Rapid Rewards",
     "category": "Airline",
-    "icon": "",
+    "icon": "https://www.southwest.com/favicon.ico",
     "urlRegex": "https://www\\.southwest\\.com/loyalty/myaccount",
     "selectors": {
       "accountName": "[class*=\"greeting__\"] [class*=\"name__\"]",
