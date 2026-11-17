@@ -26,7 +26,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (activeRefresh && sender.tab.id === activeRefresh.tabId) activeRefresh.settle(accountKey);
     }
   } else if (message.type === "GET_TAB_ACCOUNT") {
-    sendResponse(lastAccountByTab[message.tabId] || null);
+    sendResponse({ accountKey: lastAccountByTab[message.tabId] || null, progress: refreshState });
   } else if (message.type === "REFRESH_SITE") {
     runRefresh(message);
   } else if (message.type === "POPUP_OPENED") {
@@ -49,6 +49,8 @@ const REFRESH_PAGE_TIMEOUT_MS = 25000;
 const REFRESH_BOUNCE_GRACE_MS = 5000;
 // The walk in progress: { tabId, settle }. One at a time.
 let activeRefresh = null;
+// The latest progress report, for a popup opened in mid-run
+let refreshState = null;
 // The account each tab last showed, by tab ID: how a refresh knows which
 // sign-in is in use. Kept in memory only.
 const lastAccountByTab = {};
@@ -64,22 +66,28 @@ async function runRefresh({ pages, tabId, returnUrl }) {
   if (activeRefresh || !Array.isArray(pages) || pages.length === 0 || tabId == null) return;
   const urls = pages.map((page) => page.url);
   const keys = pages.flatMap((page) => page.keys);
-  const report = (state) =>
-    chrome.runtime.sendMessage({ type: "REFRESH_PROGRESS", total: urls.length, ...state }).catch(() => {});
+  const report = (state) => {
+    refreshState = { type: "REFRESH_PROGRESS", total: urls.length, ...state };
+    console.log("[Points Nest] Refresh:", refreshState);
+    chrome.runtime.sendMessage(refreshState).catch(() => {});
+  };
   // Loads an address in the tab as a fresh document. Two addresses that
   // differ only after "#" are one document to the browser, and the site
-  // would swap cards in place: a reload rules out reading one card's name
-  // beside another card's balance in mid-swap.
+  // would swap cards in place. Going by way of a blank page rules out
+  // reading one card's name beside another card's balance in mid-swap.
   let currentUrl = returnUrl;
   const go = async (url) => {
-    const sameDocument = url.split("#")[0] === (currentUrl || "").split("#")[0];
-    if (url !== currentUrl) await chrome.tabs.update(tabId, { url });
-    if (sameDocument) await chrome.tabs.reload(tabId);
+    if (url.split("#")[0] === (currentUrl || "").split("#")[0]) {
+      const blank = waitForComplete(tabId);
+      await chrome.tabs.update(tabId, { url: "about:blank" });
+      await blank;
+    }
+    await chrome.tabs.update(tabId, { url });
     currentUrl = url;
   };
   let read = 0;
   let stopped = false;
-  activeRefresh = { tabId, settle: () => {} };
+  activeRefresh = { tabId, page: -1, settle: () => {} };
 
   try {
     for (let i = 0; i < urls.length; i++) {
@@ -88,6 +96,7 @@ async function runRefresh({ pages, tabId, returnUrl }) {
       await go(urls[i]);
       // Wait for this page's read, a bounce away from the site, or the timeout.
       // Resolves to the account key read, or null when the page gave none.
+      activeRefresh.page = i;
       const accountKey = await new Promise((resolve) => {
         const timer = setTimeout(() => resolve(null), REFRESH_PAGE_TIMEOUT_MS);
         activeRefresh.settle = (key) => {
@@ -117,14 +126,34 @@ async function runRefresh({ pages, tabId, returnUrl }) {
   }
 }
 
+/**
+ * Resolves when the tab next finishes loading, or after a short wait.
+ */
+function waitForComplete(tabId) {
+  return new Promise((resolve) => {
+    const done = () => {
+      chrome.tabs.onUpdated.removeListener(listener);
+      clearTimeout(timer);
+      resolve();
+    };
+    const listener = (id, changeInfo) => {
+      if (id === tabId && changeInfo.status === "complete") done();
+    };
+    const timer = setTimeout(done, 3000);
+    chrome.tabs.onUpdated.addListener(listener);
+  });
+}
+
 // A refresh page that lands off the tracked pages, such as a sign-in
 // screen for another person's account, is skipped after a short grace.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (!activeRefresh || tabId !== activeRefresh.tabId || changeInfo.status !== "complete") return;
-  const settle = activeRefresh.settle;
+  const page = activeRefresh.page;
   setTimeout(async () => {
+    // Only for the page that was loading then, if the run is still on it
+    if (!activeRefresh || activeRefresh.page !== page) return;
     const tab = await chrome.tabs.get(tabId).catch(() => null);
-    if (!tab || !matchesSiteConfig(tab.url)) settle(null);
+    if (!tab || !matchesSiteConfig(tab.url)) activeRefresh.settle(null);
   }, REFRESH_BOUNCE_GRACE_MS);
 });
 

@@ -78,8 +78,11 @@ function renderRefreshBar(rows, configs) {
 
     // The account this tab shows: the worker's record of its last capture
     // here, else an exact match of the tab's address to a saved page
-    chrome.runtime.sendMessage({ type: "GET_TAB_ACCOUNT", tabId: tab.id }, (lastKey) => {
+    chrome.runtime.sendMessage({ type: "GET_TAB_ACCOUNT", tabId: tab.id }, (reply) => {
       void chrome.runtime.lastError;
+      const lastKey = reply && reply.accountKey;
+      // A popup opened in mid-run picks up the run's progress
+      if (reply && reply.progress && reply.progress.running) refreshProgress = reply.progress;
       const onPage = rows.flatMap((row) => row.members).find((member) => member.scrapedUrl === tab.url);
       const target = pickRefreshTarget(groups, lastKey || (onPage && onPage.accountKey));
 
