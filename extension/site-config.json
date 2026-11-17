@@ -415,7 +415,7 @@
   {
     "siteName": "EVA Air",
     "category": "Airline",
-    "icon": "https://eservice.evaair.com/favicon.ico",
+    "icon": "https://eservice.evaair.com/flyeva/favicon.ico",
     "urlRegex": "https://eservice\\.evaair\\.com/flyeva/eva/ffp/frequent-flyer\\.aspx",
     "selectors": {
       "accountName": "main.content p.text-3.display-none-mdst span.text-regular",
