@@ -427,9 +427,11 @@ function createCategoryGroup(cat, items, configs, valuations) {
     const displayName = getCardSubtitle(account, formatAmount);
     const tag = getCardTag(account);
 
+    // A bank card leads with its card name; the program sits below it
+    const cardFirst = account.category === "Bank" && !account.combined;
     bindData(clone, {
-      title: getAccountTitle(account),
-      account: displayName,
+      title: cardFirst ? displayName : getAccountTitle(account),
+      account: cardFirst ? getAccountTitle(account) : displayName,
       points: formatAmount(account.points),
       tag: tag.text,
       icon: iconUrl,
