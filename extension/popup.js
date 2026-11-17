@@ -21,14 +21,12 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   setupImportModal();
 
-  // Load preferred display mode once any pending storage migration has run
-  ensureMigrated(() => {
-    store.get(["displayMode", "viewMode"], (result) => {
-      currentDisplayMode = result.displayMode || "pts";
-      currentViewMode = result.viewMode || "person";
-      updateToggleUI();
-      renderData();
-    });
+  // Load preferred display mode
+  store.get(["displayMode", "viewMode"], (result) => {
+    currentDisplayMode = result.displayMode || "pts";
+    currentViewMode = result.viewMode || "person";
+    updateToggleUI();
+    renderData();
   });
 
   // Switch between the person view and the combined program view
@@ -389,12 +387,16 @@ function renderHoldings(account, openAccount) {
       value: partial ? formatNumber(account.expiringAmount) : "All",
     });
   }
+  // In a program window each extra names its owner
+  const ownerOf = {};
+  (account.rows || []).forEach((row) => row.members.forEach((member) => (ownerOf[member.accountKey] = row.owner)));
   members
     .flatMap((member) => member.extras || [])
     .forEach((holding) => {
+      const expiry = holding.expiresOn ? `Expires ${formatDate(holding.expiresOn)}` : "No expiry shown";
       rows.push({
         label: holding.label,
-        note: holding.expiresOn ? `Expires ${formatDate(holding.expiresOn)}` : "No expiry shown",
+        note: account.combined ? `${ownerOf[holding.accountKey]} · ${expiry}` : expiry,
         value: holding.unit === "USD" ? `$${formatCurrency(holding.amount)}` : formatNumber(holding.amount),
       });
     });

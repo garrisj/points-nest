@@ -196,7 +196,8 @@
     "normalizations": {
       "programName": {
         "pattern": "SKYMILES® ",
-        "replace": ""
+        "replace": "",
+        "transform": "titlecase"
       }
     }
   },
