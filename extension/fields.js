@@ -8,7 +8,8 @@
  *   }
  *
  * `selector` takes the same forms as the main selectors. `pattern` is
- * optional and keeps its first capture group. `parse` names a parser below.
+ * optional and keeps its first capture group. `parse` names a parser below: text,
+ * number, money, date or monthEnd.
  * Each parser returns null for text it cannot read, so a wrong match saves
  * nothing instead of a wrong value.
  */
@@ -52,6 +53,13 @@ const PARSERS = {
     m = text.match(/^(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})\.?,?\s+(\d{4})$/);
     if (m && monthOf(m[2])) return toIsoDate(+m[3], monthOf(m[2]), +m[1]);
     return null;
+  },
+
+  // A month and year, read as the last day of that month: "Jul. 2029"
+  monthEnd: (text) => {
+    const m = text.match(/^([A-Za-z]{3,9})\.?,?\s+(\d{4})$/);
+    const month = m ? MONTHS.findIndex((name) => name.startsWith(m[1].toLowerCase())) + 1 : 0;
+    return month ? toIsoDate(+m[2], month, new Date(Date.UTC(+m[2], month, 0)).getUTCDate()) : null;
   },
 };
 
@@ -98,8 +106,7 @@ function readFields(fieldRules, getText) {
  * `label` is fixed text or a rule. `amount` is required. `expiresOn`,
  * `total` and `id` are optional rules, and `unit` is optional text. A rule
  * with no selector reads the row's own text. `skipZero` leaves out rows
- * whose amount is 0. `"required": true` on `expiresOn` means its element
- * must be on the page, even when its text holds no date ("None").
+ * whose amount is 0.
  *
  * `getRows` finds the row elements; `getText` finds a selector's text inside
  * a row. Returns { type: [items] }. A list with a row it cannot read is
@@ -121,11 +128,13 @@ function readLists(listRules, getRows, getText) {
       ["expiresOn", "total", "id"].forEach((name) => {
         const rule = list[name];
         if (!rule) return;
+        // An expiry element that is not on the page, as in a collapsed row,
+        // is left out, so the stored date stays. One that shows no date
+        // ("None") reads as null.
+        if (name === "expiresOn" && !getText(rule.selector, row)) return;
         item[name] = read(row, rule);
-        // A declared ID or total must read. Expiry may be absent, unless
-        // the rule is `required`: then its element must at least be there.
-        const missing = name === "expiresOn" ? rule.required && !getText(rule.selector, row) : item[name] == null;
-        if (missing) complete = false;
+        // A declared ID or total must read
+        if (name !== "expiresOn" && item[name] == null) complete = false;
       });
       return complete && item.label && item.amount != null ? item : null;
     });

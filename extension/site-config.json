@@ -407,10 +407,40 @@
         "expiresOn": {
           "selector": "[class*=\"transferabilitySection__\"] [class*=\"additionalText__\"]",
           "pattern": "^Expiration: (.+)$",
-          "parse": "date",
-          "required": true
+          "parse": "date"
         }
       }
     ]
+  },
+  {
+    "siteName": "EVA Air",
+    "category": "Airline",
+    "icon": "https://eservice.evaair.com/favicon.ico",
+    "urlRegex": "https://eservice\\.evaair\\.com/flyeva/eva/ffp/frequent-flyer\\.aspx",
+    "selectors": {
+      "accountName": "main.content p.text-3.display-none-mdst span.text-regular",
+      "accountId": "main.content dl.margin-t-4 dd.text-4 span.text-regular:last-child",
+      "programName": "main.content dl.margin-t-4 dt",
+      "rewardsValue": "main.content p.margin-b-2 > span.color-green.text-2.text-medium"
+    },
+    "normalizations": {
+      "accountName": {
+        "transform": "titlecase"
+      },
+      "programName": {
+        "pattern": "^\\s*Your (.+?) Card Validity:[\\s\\S]*$",
+        "replace": "$1"
+      }
+    },
+    "fields": {
+      "balance.expiresOn": {
+        "selector": "main.content tr.table-dataRow td[data-head=\"Valid Through\"]",
+        "parse": "monthEnd"
+      },
+      "balance.expiringAmount": {
+        "selector": "main.content tr.table-dataRow td[data-head=\"Mileage\"]",
+        "parse": "number"
+      }
+    }
   }
 ]

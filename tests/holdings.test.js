@@ -79,8 +79,8 @@ assert.deepStrictEqual(listsOf("Southwest Rapid Rewards", [credit("139.40 Dollar
   { label: "Flight Credit", amount: 100, unit: undefined, id: "XYZ789", expiresOn: "2027-05-31" },
 ]);
 assert.deepStrictEqual(listsOf("Southwest Rapid Rewards", []), { funds: [] });
-// A collapsed row shows no expiry element, so the list is skipped, not saved without dates.
-assert.deepStrictEqual(listsOf("Southwest Rapid Rewards", [credit("139.40 Dollars", "ABC123", null)]), {});
+// A collapsed row shows no expiry element: the item carries no expiry, so the stored date stays.
+assert.ok(!("expiresOn" in listsOf("Southwest Rapid Rewards", [credit("139.40 Dollars", "ABC123", null)]).funds[0]));
 assert.deepStrictEqual(listsOf("Southwest Rapid Rewards", [credit("76,869 Points", "ABC123", "Expiration: None")]), {});
 
 // IHG: the free nights tile gives a count; a count of 0 is no holding.

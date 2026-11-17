@@ -48,7 +48,8 @@ function applyLists(state, accountKey, lists, seenAt) {
         amount: item.amount,
         unit: item.unit || DEFAULT_UNITS[type],
         total: item.total == null ? null : item.total,
-        expiresOn: item.expiresOn || null,
+        // Left out by the capture means not shown this time: keep the stored date
+        expiresOn: item.expiresOn === undefined ? (old ? old.expiresOn : null) : item.expiresOn,
       };
       const same = old && old.state === "active" && Object.keys(next).every((key) => old[key] === next[key]);
       if (same) {

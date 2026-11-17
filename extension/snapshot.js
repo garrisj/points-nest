@@ -54,6 +54,7 @@ function buildSnapshot(doc, url, takenAt) {
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       [...node.attributes].forEach((attr) => {
         if (SNAPSHOT_STRIP.test(attr.name)) node.removeAttribute(attr.name);
+        else if (node instanceof SVGElement) return;
         else if (attr.value.length > SNAPSHOT_MAX_ATTR) node.setAttribute(attr.name, "");
         else if (!SNAPSHOT_KEEP.test(attr.name)) node.setAttribute(attr.name, maskDigits(attr.value));
       });
@@ -63,7 +64,9 @@ function buildSnapshot(doc, url, takenAt) {
 
   // The address without its query, which can hold account keys
   const page = maskDigits(url.split(/[?#]/)[0]);
-  return `<!DOCTYPE html>\n<!-- Points Nest snapshot | ${page} | ${takenAt} -->\n${root.outerHTML}\n`;
+  // Icon addresses, for the site config. Empty means the site uses /favicon.ico.
+  const icons = [...doc.querySelectorAll('link[rel*="icon"]')].map((link) => link.href).join(" ");
+  return `<!DOCTYPE html>\n<!-- Points Nest snapshot | ${page} | ${takenAt} | icons: ${icons} -->\n${root.outerHTML}\n`;
 }
 
 /**
