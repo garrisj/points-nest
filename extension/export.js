@@ -20,7 +20,7 @@ const EXPORT_VERSION = 2;
  * owners: accounts that share it share one balance, so a reader must count
  * that balance once. It is null for an account that is not pooled.
  */
-function buildExport(data, exportedAt, configs) {
+function buildExport(data, exportedAt, configs, valuations) {
   const pooledProviders = getPooledProviders(configs);
   const accounts = Object.values(data.accounts || {}).map((account) => {
     const owner = resolveOwner(account);
@@ -47,6 +47,8 @@ function buildExport(data, exportedAt, configs) {
     accounts,
     holdings,
     events,
+    // The value of a point in cents, per program, as in force at export
+    ...(valuations && { valuations }),
     raw: data,
   };
 }
@@ -54,10 +56,11 @@ function buildExport(data, exportedAt, configs) {
 /**
  * Reads all storage and downloads it as points-nest-YYYY-MM-DD.json.
  */
-function downloadExport(configs) {
+async function downloadExport(configs) {
+  const valuations = await loadValuations();
   store.get(null, (data) => {
     const now = new Date();
-    const json = JSON.stringify(buildExport(data, now.toISOString(), configs), null, 2);
+    const json = JSON.stringify(buildExport(data, now.toISOString(), configs, valuations), null, 2);
     const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
 
     const link = document.createElement("a");

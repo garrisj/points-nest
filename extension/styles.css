@@ -786,6 +786,25 @@ button.modal-holding-row:hover {
   cursor: pointer;
 }
 
+.settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: var(--spacing-sm);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.settings-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
 .export-btn:hover {
   color: var(--text-primary);
   border-color: var(--border-hover);

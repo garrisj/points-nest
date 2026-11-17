@@ -1,0 +1,183 @@
+/* Settings page (settings.html). Loads after styles.css and reuses its colors. */
+
+body.settings-page {
+  width: auto;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--spacing-xl);
+  font-size: var(--font-size-md);
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.settings-header h1 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.settings-nav {
+  display: flex;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.settings-nav a {
+  color: var(--accent-color);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.settings-nav a:hover {
+  text-decoration: underline;
+}
+
+.settings-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
+}
+
+.settings-section h2 {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  margin-bottom: var(--spacing-sm);
+}
+
+.settings-group h3 {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: var(--spacing-lg) 0 var(--spacing-sm);
+}
+
+.settings-note {
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--spacing-md);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.settings-row .settings-note {
+  margin-bottom: 0;
+}
+
+.settings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.settings-table th {
+  text-align: left;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 6px var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-table td {
+  padding: 6px var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.settings-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-table th:nth-child(2),
+.settings-table th:nth-child(3),
+#values-body .settings-table th:nth-child(5) {
+  text-align: right;
+}
+
+#accounts-body .settings-table th:nth-child(2),
+#accounts-body .settings-table th:nth-child(3) {
+  text-align: left;
+}
+
+/* One set of column widths, so the category tables line up */
+.values-table {
+  table-layout: fixed;
+}
+
+.values-table th:nth-child(1) { width: 34%; }
+.values-table th:nth-child(2) { width: 16%; }
+.values-table th:nth-child(3) { width: 12%; }
+.values-table th:nth-child(4) { width: 24%; padding-left: var(--spacing-xl); }
+.values-table th:nth-child(5) { width: 14%; }
+.values-table td:nth-child(4) { padding-left: var(--spacing-xl); }
+
+.settings-table tr.not-held td:first-child {
+  color: var(--text-secondary);
+}
+
+.settings-input {
+  font-family: inherit;
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+}
+
+.settings-input:disabled {
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+}
+
+.value-input {
+  width: 80px;
+}
+
+.settings-action {
+  font-family: inherit;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.settings-action:hover {
+  border-color: var(--text-secondary);
+}
+
+.settings-link {
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--accent-color);
+  background: none;
+  border: 0;
+  padding: 0 var(--spacing-md);
+  cursor: pointer;
+}
+
+.settings-link.danger {
+  color: #b91c1c;
+}
+
+.settings-status {
+  font-size: var(--font-size-sm);
+  color: #047857;
+}

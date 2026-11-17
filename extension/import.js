@@ -1,6 +1,7 @@
 /**
  * import.js
- * The popup's import window: restores all data from an export file.
+ * The import window on the settings page: restores all data from an
+ * export file.
  * The checks and the restore live in export.js.
  */
 

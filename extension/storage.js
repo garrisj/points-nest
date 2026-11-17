@@ -29,6 +29,13 @@ function onStoreChanged(listener) {
 /**
  * Encodes timestamp and points into a Base-36 compressed entry.
  */
+/**
+ * Calls back with the bytes the extension's storage uses.
+ */
+function getStorageBytes(callback) {
+  store.getBytesInUse(null, callback);
+}
+
 function encodeHistoryEntry(timestamp, points) {
   const epochSec = Math.floor(new Date(timestamp).getTime() / 1000);
   return {
@@ -165,5 +172,6 @@ if (typeof module !== "undefined" && module.exports) {
     updatePointsHistory,
     MAX_HISTORY_ENTRIES,
     STORAGE_AREA,
+    getStorageBytes,
   };
 }

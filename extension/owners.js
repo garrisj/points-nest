@@ -181,6 +181,30 @@ function setOwner(accounts, name, callback) {
  * Deletes the given accounts with their holdings and history. A live
  * account returns on its next capture.
  */
+/**
+ * Moves every account `from` owns to `to`. Renaming to a name already in
+ * use merges the two people. `rows` are the rows from toRows.
+ */
+function renamePerson(rows, from, to, callback) {
+  setOwner(
+    rows.filter((row) => resolveOwner(row) === from),
+    to,
+    callback,
+  );
+}
+
+/**
+ * Marks accounts personal or business, or clears the mark with null.
+ */
+function setKind(accounts, kind, callback) {
+  loadState((state) => {
+    accounts.forEach((account) => {
+      if (state.accounts[account.accountKey]) state.accounts[account.accountKey].kind = kind || null;
+    });
+    saveState(state, callback);
+  });
+}
+
 function removeAccounts(accounts, callback) {
   loadState((state) => {
     const accountKeys = new Set(accounts.map((account) => account.accountKey));
@@ -209,6 +233,8 @@ if (typeof module !== "undefined" && module.exports) {
     combineByProgram,
     listPeople,
     setOwner,
+    renamePerson,
+    setKind,
     removeAccounts,
   };
 }

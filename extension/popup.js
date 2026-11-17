@@ -16,10 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
   chrome.runtime.sendMessage({ type: "POPUP_OPENED" }).catch(() => {});
 
   setupModalListeners();
-  document.getElementById("export-btn").addEventListener("click", async () => {
-    downloadExport(await loadConfig());
-  });
-  setupImportModal();
+  document.getElementById("settings-btn").addEventListener("click", () => chrome.runtime.openOptionsPage());
 
   // Load preferred display mode
   store.get(["displayMode", "viewMode"], (result) => {
@@ -59,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (activeModalAccount) {
         openHistoryModal(activeModalAccount, programValuations, scraperConfigs);
       }
-    } else if (changes.accounts || changes.holdings) {
+    } else if (changes.accounts || changes.holdings || changes.valuations) {
       // Re-render, then refresh the open history window from the new rows
       renderData((rows) => {
         // A program window is left as it is; it is rebuilt when next opened
@@ -109,53 +106,11 @@ async function loadConfig() {
   }
 }
 
-async function loadValuations() {
-  if (programValuations) return programValuations;
-  try {
-    const url = chrome.runtime.getURL("constants.json");
-    const response = await fetch(url);
-    programValuations = await response.json();
-    return programValuations;
-  } catch (error) {
-    console.error("[Points Nest] Failed to load constants.json:", error);
-    return {};
-  }
-}
-
-function getValuationCpp(account, valuations) {
-  // 1. Try exact match on programName
-  if (account.programName && valuations[account.programName] !== undefined) {
-    return valuations[account.programName];
-  }
-
-  // 2. Try substring match on programName keys
-  if (account.programName) {
-    for (const [key, cpp] of Object.entries(valuations)) {
-      if (account.programName.toLowerCase().includes(key.toLowerCase())) {
-        return cpp;
-      }
-    }
-  }
-
-  // 3. Try match/substring match on provider/siteName
-  if (account.provider && valuations[account.provider] !== undefined) {
-    return valuations[account.provider];
-  }
-  if (account.provider) {
-    for (const [key, cpp] of Object.entries(valuations)) {
-      if (account.provider.toLowerCase().includes(key.toLowerCase())) {
-        return cpp;
-      }
-    }
-  }
-
-  // Default fallback (1.0 cent per point)
-  return 1.0;
-}
 
 async function renderData(afterRender) {
   const configs = await loadConfig();
   const valuations = await loadValuations();
+  programValuations = valuations;
 
   loadState((state) => {
     const accounts = poolAccounts(toRows(state), configs);

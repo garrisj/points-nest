@@ -4,6 +4,10 @@
   "version": "1.0.0",
   "description": "Tracks points, miles and travel credits from the account pages you open. All data stays in this browser.",
   "permissions": ["storage"],
+  "options_ui": {
+    "page": "settings.html",
+    "open_in_tab": true
+  },
   "icons": {
     "16": "icon16-active.png",
     "32": "icon32-active.png",

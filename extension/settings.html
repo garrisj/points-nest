@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Points Nest settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body class="settings-page">
+  <header class="settings-header">
+    <img src="icon48-active.png" alt="" width="32" height="32">
+    <h1>Points Nest settings</h1>
+  </header>
+
+  <nav class="settings-nav" aria-label="Sections">
+    <a href="#values">Point values</a>
+    <a href="#people">People</a>
+    <a href="#accounts">Accounts</a>
+    <a href="#data">Backup</a>
+  </nav>
+
+  <section id="values" class="settings-section">
+    <h2>Point values</h2>
+    <p class="settings-note">What one point is worth to you, in cents. These set the USD view and totals. Leave a value blank to use the built-in one.</p>
+    <div id="values-body"></div>
+  </section>
+
+  <section id="people" class="settings-section">
+    <h2>People</h2>
+    <p class="settings-note">Rename a person on every account they own at once. Renaming to a name already in the list merges the two.</p>
+    <div id="people-body"></div>
+  </section>
+
+  <section id="accounts" class="settings-section">
+    <h2>Accounts</h2>
+    <p class="settings-note">Set each account's owner and whether it is personal or business. Where a site shows which it is, the page decides.</p>
+    <datalist id="people-list"></datalist>
+    <div id="accounts-body"></div>
+  </section>
+
+  <section id="data" class="settings-section">
+    <h2>Backup</h2>
+    <p class="settings-note">Export saves everything, your point values included, to one file. Import replaces all stored data with a file's contents. The file holds account numbers and balances, so keep it private.</p>
+    <div class="settings-row">
+      <button id="export-btn" class="settings-action">Export</button>
+      <button id="import-btn" class="settings-action">Import</button>
+      <span id="data-summary" class="settings-note"></span>
+    </div>
+  </section>
+
+  <!-- Import Modal -->
+  <div id="import-modal-backdrop" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
+      <div class="modal-header">
+        <div class="modal-header-left">
+          <div class="modal-account-info">
+            <span class="modal-account-provider">Backup</span>
+            <h2 id="import-modal-title" class="modal-account-name">Import data</h2>
+          </div>
+        </div>
+        <button id="import-close-btn" class="modal-close-btn" aria-label="Close dialog" title="Close">&times;</button>
+      </div>
+      <p class="import-note">Choose a file made with Export. Import replaces everything stored now, so export first if you may want the current data back.</p>
+      <input id="import-file" class="import-file" type="file" accept=".json,application/json" />
+      <p id="import-status" class="import-status"></p>
+      <button id="import-confirm" class="modal-remove-btn import-confirm" hidden>Replace current data</button>
+    </div>
+  </div>
+  <script src="storage.js"></script>
+  <script src="model.js"></script>
+  <script src="holdings.js"></script>
+  <script src="owners.js"></script>
+  <script src="valuations.js"></script>
+  <script src="export.js"></script>
+  <script src="import.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>
