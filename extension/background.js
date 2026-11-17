@@ -22,7 +22,7 @@ chrome.runtime.onMessage.addListener((message, sender) => {
     enqueueCapture(data);
     if (activeRefresh && sender.tab && sender.tab.id === activeRefresh.tabId) activeRefresh.settle(true);
   } else if (message.type === "REFRESH_SITE") {
-    runRefresh(message.urls);
+    runRefresh(message);
   } else if (message.type === "POPUP_OPENED") {
     // Update icon to clear "update" state (with red dot)
     updateIconForActiveTab();
@@ -31,9 +31,11 @@ chrome.runtime.onMessage.addListener((message, sender) => {
 
 /*
  * Refresh: re-reads a list of saved account pages when the user asks from
- * the popup (refresh.js). The pages load one at a time in one background
- * tab, where the page scraper reads them as on any visit, with a pause
- * between pages. The tab closes at the end. Nothing here runs on its own.
+ * the popup (refresh.js). It walks the user's current tab through the
+ * pages one at a time, where the page scraper reads them as on any visit,
+ * with a pause between pages, then returns the tab to where it was. A
+ * visible tab is used because sites do not finish drawing in a hidden one.
+ * Nothing here runs on its own.
  */
 const REFRESH_PAUSE_MS = 4000;
 // Under the worker's 30-second idle limit, and over the scraper's 20 seconds
@@ -44,37 +46,41 @@ let activeRefresh = null;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function runRefresh(urls) {
-  if (activeRefresh || !Array.isArray(urls) || urls.length === 0) return;
+async function runRefresh({ urls, tabId, returnUrl }) {
+  if (activeRefresh || !Array.isArray(urls) || urls.length === 0 || tabId == null) return;
   const report = (state) =>
     chrome.runtime.sendMessage({ type: "REFRESH_PROGRESS", total: urls.length, ...state }).catch(() => {});
+  // Loads an address in the tab. The address the tab is already on is
+  // reloaded, since setting it again would do nothing.
+  let currentUrl = returnUrl;
+  const go = async (url) => {
+    await (url === currentUrl ? chrome.tabs.reload(tabId) : chrome.tabs.update(tabId, { url }));
+    currentUrl = url;
+  };
   let read = 0;
-  const tab = await chrome.tabs.create({ url: urls[0], active: false });
-  activeRefresh = { tabId: tab.id, settle: () => {} };
+  activeRefresh = { tabId, settle: () => {} };
 
   try {
     for (let i = 0; i < urls.length; i++) {
       report({ done: i, read, running: true });
-      if (i > 0) {
-        await sleep(REFRESH_PAUSE_MS);
-        await chrome.tabs.update(tab.id, { url: urls[i] });
-      }
+      if (i > 0) await sleep(REFRESH_PAUSE_MS);
       // Wait for this page's capture, a bounce away from the site, or the timeout
-      const captured = await new Promise((resolve) => {
+      const captured = new Promise((resolve) => {
         const timer = setTimeout(() => resolve(false), REFRESH_PAGE_TIMEOUT_MS);
         activeRefresh.settle = (result) => {
           clearTimeout(timer);
           resolve(result);
         };
       });
+      await go(urls[i]);
+      if (await captured) read++;
       activeRefresh.settle = () => {};
-      if (captured) read++;
     }
+    if (returnUrl && returnUrl !== currentUrl) await go(returnUrl);
   } catch (error) {
     // The user closed the tab, or the page could not load: stop quietly
     console.log("[Points Nest] Refresh stopped:", error);
   } finally {
-    chrome.tabs.remove(tab.id).catch(() => {});
     activeRefresh = null;
     report({ done: urls.length, read, running: false });
   }

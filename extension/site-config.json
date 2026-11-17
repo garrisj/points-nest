@@ -4,6 +4,7 @@
     "category": "Bank",
     "icon": "https://www.chase.com/favicon.ico",
     "urlRegex": "https://secure\\.chase\\.com/web/auth/dashboard#/dashboard/summary/[0-9]+/CARD/[A-Z]+",
+    "businessUrlRegex": "/CARD/BCC",
     "selectors": {
       "accountName": [
         ".nav-bar__print-header",

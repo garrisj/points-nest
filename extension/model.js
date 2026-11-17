@@ -94,6 +94,7 @@ function applyCapture(state, capture, now) {
       account.accountName !== capture.accountName ||
       account.tier !== tier ||
       account.currency !== currency ||
+      (capture.kind && account.kind !== capture.kind) ||
       Object.keys(fields).some((name) => holding[name] !== fields[name]);
     const elapsed = now - new Date(holding.lastSeenAt).getTime();
     if (!detailsChanged && !listsChanged && elapsed <= WRITE_THROTTLE_MS) {
@@ -115,6 +116,7 @@ function applyCapture(state, capture, now) {
     currency,
     tier,
     lastSeenAt: seenAt,
+    ...(capture.kind && { kind: capture.kind }),
   };
 
   if (balanceChanged) {

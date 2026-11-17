@@ -173,6 +173,10 @@ async function scrapeData(config) {
     accountId: accountId,
     programName: programName,
     points: rewardsPoints,
+    // Set only where the site's address tells business cards apart
+    kind: config.businessUrlRegex
+      ? new RegExp(config.businessUrlRegex).test(window.location.href) ? "business" : "personal"
+      : undefined,
     ...readExtras(config),
     lastUpdated: new Date().toISOString(),
     scrapedUrl: window.location.href,

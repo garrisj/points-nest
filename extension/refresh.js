@@ -1,9 +1,11 @@
 /**
  * refresh.js
  * The popup's refresh bar. When the current tab is on a tracked site, it
- * offers to re-read that site's saved account pages for one person: the
- * one signed in. The background worker does the reading (see "Refresh" in
- * background.js); nothing here runs unless the user clicks.
+ * offers to re-read that site's saved account pages for one sign-in: one
+ * person, and where the site keeps business cards under their own sign-in
+ * (config `businessUrlRegex`), that person's business cards apart. The
+ * background worker does the reading (see "Refresh" in background.js);
+ * nothing here runs unless the user clicks.
  */
 
 /**
@@ -18,15 +20,19 @@ function getHost(url) {
 }
 
 /**
- * The saved pages on a host, grouped by owner: { owner: [url, ...] }.
- * `rows` are the popup's rows from owners.js `poolAccounts`.
+ * The saved pages on a host, grouped by sign-in: { "Pat": [url, ...],
+ * "Pat business": [...] }. `rows` are the popup's rows from owners.js
+ * `poolAccounts`.
  */
-function getPagesByOwner(rows, host) {
+function getPagesByOwner(rows, host, configs) {
   const pages = {};
   rows.forEach((row) => {
     row.members.forEach((member) => {
       if (!host || getHost(member.scrapedUrl) !== host) return;
-      const urls = (pages[row.owner] = pages[row.owner] || []);
+      const site = configs.find((config) => config.siteName === member.provider);
+      const business = site && site.businessUrlRegex && new RegExp(site.businessUrlRegex).test(member.scrapedUrl);
+      const group = business ? `${row.owner} business` : row.owner;
+      const urls = (pages[group] = pages[group] || []);
       if (!urls.includes(member.scrapedUrl)) urls.push(member.scrapedUrl);
     });
   });
@@ -37,11 +43,12 @@ function getPagesByOwner(rows, host) {
  * Shows one button per person with saved pages on the current tab's site,
  * or hides the bar when the tab is on no tracked site.
  */
-function renderRefreshBar(rows) {
+function renderRefreshBar(rows, configs) {
   const bar = document.getElementById("refresh-bar");
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const host = getHost(tabs && tabs[0] && tabs[0].url);
-    const pages = getPagesByOwner(rows, host);
+    const tab = tabs && tabs[0];
+    const pages = getPagesByOwner(rows, host, configs);
     const owners = Object.keys(pages).sort();
     bar.hidden = owners.length === 0;
     if (bar.hidden) return;
@@ -53,8 +60,9 @@ function renderRefreshBar(rows) {
       const button = document.createElement("button");
       button.className = "export-btn";
       button.textContent = `${owner} (${pages[owner].length})`;
-      button.title = `Open each of ${owner}'s saved pages on this site in a background tab, one at a time`;
-      button.onclick = () => chrome.runtime.sendMessage({ type: "REFRESH_SITE", urls: pages[owner] });
+      button.title = `Walk this tab through each of these saved pages, one at a time, then return here`;
+      button.onclick = () =>
+        chrome.runtime.sendMessage({ type: "REFRESH_SITE", urls: pages[owner], tabId: tab.id, returnUrl: tab.url });
       return button;
     });
     const status = document.createElement("span");

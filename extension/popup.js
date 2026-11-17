@@ -160,7 +160,7 @@ async function renderData(afterRender) {
 
   loadState((state) => {
     const accounts = poolAccounts(toRows(state), configs);
-    renderRefreshBar(accounts);
+    renderRefreshBar(accounts, configs);
     // Runs once this render pass ends, on every path out of it
     if (afterRender) setTimeout(() => afterRender(accounts), 0);
     const overallTotal = accounts.reduce((sum, account) => sum + account.points, 0);
