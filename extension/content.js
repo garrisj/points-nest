@@ -173,17 +173,31 @@ async function scrapeData(config) {
     accountId: accountId,
     programName: programName,
     points: rewardsPoints,
-    // Optional extras from the same page (see fields.js)
-    fields: readFields(config.fields, (selector) => extractText(selector, true)),
-    // Optional rows of other holdings, such as travel funds (see fields.js)
-    lists: readLists(
-      config.lists,
-      (selector) => [...document.querySelectorAll(selector)],
-      (selector, row) => (selector ? extractText(selector, true, row) : row.textContent),
-    ),
+    ...readExtras(config),
     lastUpdated: new Date().toISOString(),
     scrapedUrl: window.location.href,
   };
+}
+
+/**
+ * Reads the optional extras a config declares (see fields.js): `fields`
+ * beside the balance, and `lists` of other holdings such as travel funds.
+ * A failure here is logged and never blocks the balance capture.
+ */
+function readExtras(config) {
+  try {
+    return {
+      fields: readFields(config.fields, (selector) => extractText(selector, true)),
+      lists: readLists(
+        config.lists,
+        (selector) => [...document.querySelectorAll(selector)],
+        (selector, row) => (selector ? extractText(selector, true, row) : row.textContent),
+      ),
+    };
+  } catch (error) {
+    console.error("[Points Nest] Could not read the extra fields or lists:", error);
+    return { fields: {}, lists: {} };
+  }
 }
 
 let scrapeAttemptsInterval = null;
