@@ -854,6 +854,29 @@ button.modal-holding-row:hover {
   border-color: var(--border-hover);
 }
 
+/* Refresh bar (refresh.js) */
+.refresh-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) 0 var(--spacing-md);
+}
+
+.refresh-bar[hidden] {
+  display: none;
+}
+
+.refresh-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.refresh-bar button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* Import window (import.js) */
 .import-note,
 .import-status {

@@ -15,15 +15,80 @@ function enqueueCapture(capture) {
 }
 
 // Listen for messages from content.js and popup.js
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, sender) => {
   if (message.type === "POINTS_SCRAPED") {
     const data = message.payload;
     console.log("[Points Nest] Received scraped points in background:", data);
     enqueueCapture(data);
+    if (activeRefresh && sender.tab && sender.tab.id === activeRefresh.tabId) activeRefresh.settle(true);
+  } else if (message.type === "REFRESH_SITE") {
+    runRefresh(message.urls);
   } else if (message.type === "POPUP_OPENED") {
     // Update icon to clear "update" state (with red dot)
     updateIconForActiveTab();
   }
+});
+
+/*
+ * Refresh: re-reads a list of saved account pages when the user asks from
+ * the popup (refresh.js). The pages load one at a time in one background
+ * tab, where the page scraper reads them as on any visit, with a pause
+ * between pages. The tab closes at the end. Nothing here runs on its own.
+ */
+const REFRESH_PAUSE_MS = 4000;
+// Under the worker's 30-second idle limit, and over the scraper's 20 seconds
+const REFRESH_PAGE_TIMEOUT_MS = 25000;
+const REFRESH_BOUNCE_GRACE_MS = 5000;
+// The walk in progress: { tabId, settle }. One at a time.
+let activeRefresh = null;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function runRefresh(urls) {
+  if (activeRefresh || !Array.isArray(urls) || urls.length === 0) return;
+  const report = (state) =>
+    chrome.runtime.sendMessage({ type: "REFRESH_PROGRESS", total: urls.length, ...state }).catch(() => {});
+  let read = 0;
+  const tab = await chrome.tabs.create({ url: urls[0], active: false });
+  activeRefresh = { tabId: tab.id, settle: () => {} };
+
+  try {
+    for (let i = 0; i < urls.length; i++) {
+      report({ done: i, read, running: true });
+      if (i > 0) {
+        await sleep(REFRESH_PAUSE_MS);
+        await chrome.tabs.update(tab.id, { url: urls[i] });
+      }
+      // Wait for this page's capture, a bounce away from the site, or the timeout
+      const captured = await new Promise((resolve) => {
+        const timer = setTimeout(() => resolve(false), REFRESH_PAGE_TIMEOUT_MS);
+        activeRefresh.settle = (result) => {
+          clearTimeout(timer);
+          resolve(result);
+        };
+      });
+      activeRefresh.settle = () => {};
+      if (captured) read++;
+    }
+  } catch (error) {
+    // The user closed the tab, or the page could not load: stop quietly
+    console.log("[Points Nest] Refresh stopped:", error);
+  } finally {
+    chrome.tabs.remove(tab.id).catch(() => {});
+    activeRefresh = null;
+    report({ done: urls.length, read, running: false });
+  }
+}
+
+// A refresh page that lands off the tracked pages, such as a sign-in
+// screen for another person's account, is skipped after a short grace.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (!activeRefresh || tabId !== activeRefresh.tabId || changeInfo.status !== "complete") return;
+  const settle = activeRefresh.settle;
+  setTimeout(async () => {
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    if (!tab || !matchesSiteConfig(tab.url)) settle(false);
+  }, REFRESH_BOUNCE_GRACE_MS);
 });
 
 // Developer shortcut, unset by default: ask the page for a masked snapshot
