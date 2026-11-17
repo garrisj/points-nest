@@ -348,12 +348,25 @@ function getAccountTitle(account) {
 }
 
 /**
- * Fills the detail window's list of what the account holds beside its
- * balance: points due to expire, then each credit, certificate or fund.
+ * Fills the detail window's list: the cards of a pool, then what the
+ * account holds beside its balance: points due to expire, then each
+ * credit, certificate or fund.
  */
 function renderHoldings(account) {
   const listEl = document.getElementById("modal-holdings");
+  const members = account.members || [account];
   const rows = [];
+  // A pool lists its cards, each with a link to its own page
+  if (members.length > 1) {
+    members.forEach((member) => {
+      rows.push({
+        label: `${member.accountName} (${member.accountId})`,
+        note: `Updated ${getRelativeTime(member.lastUpdated)}`,
+        value: member.scrapedUrl ? "Open" : "",
+        url: member.scrapedUrl,
+      });
+    });
+  }
   if (account.expiresOn) {
     const partial = account.expiringAmount != null && account.expiringAmount !== account.points;
     rows.push({
@@ -362,7 +375,7 @@ function renderHoldings(account) {
       value: partial ? formatNumber(account.expiringAmount) : "All",
     });
   }
-  (account.members || [account])
+  members
     .flatMap((member) => member.extras || [])
     .forEach((holding) => {
       rows.push({
@@ -378,9 +391,11 @@ function renderHoldings(account) {
       rowEl.className = "modal-holding-row";
       [["modal-holding-label", row.label], ["modal-holding-note", row.note], ["modal-holding-value", row.value]].forEach(
         ([className, text]) => {
-          const el = document.createElement("span");
-          el.className = className;
+          const isLink = row.url && className === "modal-holding-value";
+          const el = document.createElement(isLink ? "button" : "span");
+          el.className = className + (isLink ? " modal-holding-link" : "");
           el.textContent = text;
+          if (isLink) el.onclick = () => chrome.tabs.create({ url: row.url });
           rowEl.appendChild(el);
         },
       );

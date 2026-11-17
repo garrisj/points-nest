@@ -708,6 +708,23 @@ body.two-column {
   color: var(--text-secondary);
 }
 
+.modal-holding-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.modal-holding-value.modal-holding-link {
+  color: var(--accent-color);
+}
+
+.modal-holding-link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
 .modal-holding-value {
   grid-column: 2;
   grid-row: 1 / span 2;
