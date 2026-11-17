@@ -50,24 +50,19 @@
   <!-- Template for Account Card -->
   <template id="account-card-template">
     <div class="account-card">
-      <div class="account-left">
-        <img class="account-icon" data-src="icon" />
-        <div class="account-info">
+      <img class="account-icon" data-src="icon" />
+      <div class="account-main">
+        <div class="account-line">
           <span class="account-provider" data-text="title"></span>
+          <span class="pts-row">
+            <span class="pts-amount" data-text="points"></span>
+            <span class="pts-change"></span>
+          </span>
+        </div>
+        <div class="account-line">
           <span class="account-name" data-text="account"></span>
+          <span class="account-tag" data-text="tag"></span>
         </div>
-      </div>
-      <div class="account-pts">
-        <div class="pts-row">
-          <span class="pts-amount" data-text="points"></span>
-          <span class="pts-change"></span>
-        </div>
-        <div class="pts-updated">
-          <span class="status-dot"></span>
-          <span data-text="updated"></span>
-        </div>
-        <div class="pts-note" data-text="expiry"></div>
-        <div class="pts-extras"></div>
       </div>
     </div>
   </template>
@@ -93,6 +88,7 @@
             <span id="modal-current-points" class="modal-pts-amount"></span>
             <span id="modal-pts-change" class="modal-pts-change"></span>
           </div>
+          <span id="modal-updated" class="modal-updated"></span>
         </div>
         <div class="modal-portal-wrapper">
           <button id="modal-portal-btn" class="modal-portal-btn" title="Open portal website">
@@ -103,6 +99,9 @@
           </button>
         </div>
       </div>
+
+      <!-- Everything the account holds beside its balance -->
+      <div id="modal-holdings" class="modal-holdings"></div>
 
       <!-- Chart Section -->
       <div class="modal-chart-section">
@@ -120,22 +119,6 @@
 
         <div id="chart-container" class="chart-container">
           <!-- SVG chart will be injected here -->
-        </div>
-      </div>
-
-      <!-- Stats Grid -->
-      <div class="modal-stats-grid">
-        <div class="stat-card">
-          <span class="stat-label">Net Change</span>
-          <span id="stat-net-change" class="stat-value">--</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-label">Highest</span>
-          <span id="stat-highest" class="stat-value">--</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-label">Lowest</span>
-          <span id="stat-lowest" class="stat-value">--</span>
         </div>
       </div>
 

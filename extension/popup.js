@@ -306,6 +306,89 @@ function formatExtras(account) {
   });
 }
 
+// A card is flagged once its balance has not been read for this long
+const STALE_AFTER_MS = 35 * 24 * 60 * 60 * 1000;
+
+/**
+ * The one short tag a card shows under its balance, so every card keeps the
+ * same height: a stale warning, else the balance expiry, else the other
+ * holdings. "+N" counts what did not fit; the detail window lists it all.
+ * Returns { text, warn }.
+ */
+function getCardTag(account) {
+  const age = Date.now() - new Date(account.lastUpdated).getTime();
+  if (age > STALE_AFTER_MS) {
+    return { text: `Not seen in ${Math.floor(age / (7 * 24 * 60 * 60 * 1000))} weeks`, warn: true };
+  }
+  const expiry = formatExpiry(account);
+  const notes = (expiry ? [expiry] : []).concat(formatExtras(account));
+  if (notes.length === 0) return { text: "", warn: false };
+  return { text: notes[0] + (notes.length > 1 ? ` +${notes.length - 1}` : ""), warn: Boolean(expiry) };
+}
+
+/**
+ * The line under a card's title: what tells this account from its
+ * neighbors. A bank card shows its card name; the rest show their number.
+ */
+function getCardSubtitle(account, formatAmount) {
+  if (account.combined) {
+    // Each owner's share of a combined program
+    return account.parts.map((p) => `${p.owner} ${formatAmount(p.points)}`).join(" · ");
+  }
+  if (account.members.length > 1) return `Pool of ${account.members.length} cards`;
+  return account.category === "Bank" ? `${account.accountName} (${account.accountId})` : account.accountId;
+}
+
+/**
+ * Card and window title: the program, without the status tier.
+ */
+function getAccountTitle(account) {
+  if (account.title) return account.title;
+  return account.category === "Bank" ? `${account.provider} ${account.currency}` : account.provider;
+}
+
+/**
+ * Fills the detail window's list of what the account holds beside its
+ * balance: points due to expire, then each credit, certificate or fund.
+ */
+function renderHoldings(account) {
+  const listEl = document.getElementById("modal-holdings");
+  const rows = [];
+  if (account.expiresOn) {
+    const partial = account.expiringAmount != null && account.expiringAmount !== account.points;
+    rows.push({
+      label: "Points expiring",
+      note: formatDate(account.expiresOn),
+      value: partial ? formatNumber(account.expiringAmount) : "All",
+    });
+  }
+  (account.members || [account])
+    .flatMap((member) => member.extras || [])
+    .forEach((holding) => {
+      rows.push({
+        label: holding.label,
+        note: holding.expiresOn ? `Expires ${formatDate(holding.expiresOn)}` : "No expiry shown",
+        value: holding.unit === "USD" ? `$${formatCurrency(holding.amount)}` : formatNumber(holding.amount),
+      });
+    });
+
+  listEl.replaceChildren(
+    ...rows.map((row) => {
+      const rowEl = document.createElement("div");
+      rowEl.className = "modal-holding-row";
+      [["modal-holding-label", row.label], ["modal-holding-note", row.note], ["modal-holding-value", row.value]].forEach(
+        ([className, text]) => {
+          const el = document.createElement("span");
+          el.className = className;
+          el.textContent = text;
+          rowEl.appendChild(el);
+        },
+      );
+      return rowEl;
+    }),
+  );
+}
+
 function createCategoryGroup(cat, items, configs, valuations) {
   const groupDiv = document.createElement("div");
   groupDiv.className = "category-group";
@@ -320,41 +403,23 @@ function createCategoryGroup(cat, items, configs, valuations) {
 
   items.forEach((account) => {
     const clone = cardTemplate.content.cloneNode(true);
-    const updatedTime = getRelativeTime(account.lastUpdated);
     const siteConfig = configs.find((c) => c.siteName === account.provider);
     const iconUrl = siteConfig ? siteConfig.icon : "";
 
     const cpp = getValuationCpp(account, valuations);
     const formatAmount = (points) =>
       currentDisplayMode === "usd" ? `$${formatCurrency(points * (cpp / 100))}` : formatNumber(points);
-    let displayName = `${account.accountName} (${account.accountId})`;
-    if (account.combined) {
-      // Each owner's share of a combined program
-      displayName = account.parts.map((p) => `${p.owner} ${formatAmount(p.points)}`).join(" · ");
-    } else if (account.members.length > 1) {
-      displayName = `Pool of ${account.members.length} cards`;
-    }
-    const pointsDisplay =
-      currentDisplayMode === "usd"
-        ? `$${formatCurrency(account.points * (cpp / 100))}`
-        : formatNumber(account.points);
+    const displayName = getCardSubtitle(account, formatAmount);
+    const tag = getCardTag(account);
 
     bindData(clone, {
-      title: account.title || `${account.provider} — ${account.programName}`,
+      title: getAccountTitle(account),
       account: displayName,
-      points: pointsDisplay,
-      updated: `Updated ${updatedTime}`,
-      expiry: formatExpiry(account),
+      points: formatAmount(account.points),
+      tag: tag.text,
       icon: iconUrl,
     });
-
-    const extrasEl = clone.querySelector(".pts-extras");
-    formatExtras(account).forEach((line) => {
-      const lineEl = document.createElement("div");
-      lineEl.className = "pts-note";
-      lineEl.textContent = line;
-      extrasEl.appendChild(lineEl);
-    });
+    clone.querySelector(".account-tag").classList.toggle("tag-warn", tag.warn);
 
     // Add change indicators if changed recently (e.g. within last 24 hours)
     const cardEl = clone.querySelector(".account-card");
@@ -380,25 +445,7 @@ function createCategoryGroup(cat, items, configs, valuations) {
             ptsChangeEl.textContent = `-${formatNumber(Math.abs(account.change))}`;
           }
         }
-      } else if (account.change === null || account.change === undefined) {
-        cardEl.classList.add("change-new");
-        if (ptsChangeEl) {
-          ptsChangeEl.textContent = "new";
-        }
       }
-    }
-
-    // Set the status indicator based on data freshness/age
-    const statusDotEl = clone.querySelector(".status-dot");
-    const elapsedSinceLastUpdate = Date.now() - new Date(account.lastUpdated).getTime();
-    const oneWeek = 7 * 24 * 60 * 60 * 1000;
-    const oneMonth = 30 * 24 * 60 * 60 * 1000;
-    if (elapsedSinceLastUpdate < oneWeek) {
-      statusDotEl.classList.add("status-green");
-    } else if (elapsedSinceLastUpdate < oneMonth) {
-      statusDotEl.classList.add("status-yellow");
-    } else {
-      statusDotEl.classList.add("status-red");
     }
 
     // Click on the logo opens the scraped portal URL
@@ -590,14 +637,13 @@ function openHistoryModal(account, valuations, configs) {
 
   // Header info
   if (providerEl) {
-    providerEl.textContent = `${account.provider} — ${account.programName}`;
+    providerEl.textContent = getAccountTitle(account);
   }
   if (nameEl) {
     const members = account.members || [account];
-    nameEl.textContent =
-      members.length > 1
-        ? `Pool of ${members.length} cards`
-        : `${account.accountName} (${account.accountId})`;
+    // The tier shows here, not on the card
+    const parts = [account.accountName, account.tier, account.accountId].filter(Boolean);
+    nameEl.textContent = members.length > 1 ? `Pool of ${members.length} cards` : parts.join(" · ");
   }
   if (iconEl) {
     const siteConfig = configs ? configs.find((c) => c.siteName === account.provider) : null;
@@ -617,6 +663,8 @@ function openHistoryModal(account, valuations, configs) {
   }
 
   setupOwnerControls(account);
+  renderHoldings(account);
+  document.getElementById("modal-updated").textContent = `Updated ${getRelativeTime(account.lastUpdated)}`;
 
   // Reveal modal
   backdrop.classList.remove("hidden");

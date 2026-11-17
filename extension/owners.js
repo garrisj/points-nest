@@ -141,7 +141,7 @@ function combineByProgram(rows) {
     return {
       ...first,
       combined: true,
-      title: first.category === "Bank" ? `${first.provider} — ${first.currency}` : first.provider,
+      title: first.category === "Bank" ? `${first.provider} ${first.currency}` : first.provider,
       parts: Object.entries(shares)
         .map(([owner, points]) => ({ owner, points }))
         .sort((a, b) => b.points - a.points),

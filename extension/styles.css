@@ -122,16 +122,25 @@ body.two-column {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
-.account-info {
+/* A card is always two lines: title and balance, then account and tag */
+.account-card {
+  gap: var(--spacing-md);
+}
+
+.account-main {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
 }
 
-.account-left {
+.account-line {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--spacing-md);
+  min-height: 18px;
 }
 
 .account-icon {
@@ -146,26 +155,45 @@ body.two-column {
 }
 
 .account-provider {
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--accent-color);
-}
-
-.account-name {
   font-size: var(--font-size-md);
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.account-pts {
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  min-width: var(--pts-min-width);
+.account-name {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.account-provider,
+.account-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-tag {
   flex-shrink: 0;
+  max-width: 62%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.account-tag.tag-warn {
+  background: #fef3c7;
+  color: #78350f;
+}
+
+.account-tag:empty {
+  display: none;
 }
 
 .pts-amount {
@@ -173,29 +201,6 @@ body.two-column {
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.2px;
-}
-
-.pts-updated {
-  font-size: var(--font-size-xs);
-  color: var(--text-secondary);
-  margin-top: 1px;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-/* Notes under the update time, each on its own line, so a long one does
-   not squeeze the name */
-.pts-note {
-  font-size: var(--font-size-xs);
-  color: var(--text-secondary);
-  margin-top: 1px;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.pts-note:empty {
-  display: none;
 }
 
 .status-dot {
@@ -288,6 +293,7 @@ body.two-column {
   display: flex;
   align-items: baseline;
   justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .pts-change {
@@ -670,6 +676,47 @@ body.two-column {
 }
 
 /* Modal Stats Grid */
+.modal-updated {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+/* What the account holds beside its balance: label and note left, value right */
+.modal-holdings {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--spacing-md);
+}
+
+.modal-holding-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: var(--spacing-md);
+  padding: 6px 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.modal-holding-label {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal-holding-note {
+  grid-row: 2;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.modal-holding-value {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
 .modal-stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
