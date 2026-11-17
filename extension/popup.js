@@ -7,6 +7,8 @@ let currentDisplayMode = "pts";
 let scraperConfigs = null;
 let programValuations = null;
 let activeModalAccount = null;
+// The program row an account window was opened from, for its back button
+let modalParent = null;
 let knownPeople = [];
 let currentViewMode = "person";
 
@@ -62,7 +64,8 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (changes.accounts || changes.holdings) {
       // Re-render, then refresh the open history window from the new rows
       renderData((rows) => {
-        if (!activeModalAccount) return;
+        // A program window is left as it is; it is rebuilt when next opened
+        if (!activeModalAccount || activeModalAccount.combined) return;
         const openKey = activeModalAccount.accountKey;
         const fresh = rows.find((row) => row.members.some((m) => m.accountKey === openKey));
         if (fresh) {
@@ -352,12 +355,23 @@ function getAccountTitle(account) {
  * account holds beside its balance: points due to expire, then each
  * credit, certificate or fund.
  */
-function renderHoldings(account) {
+function renderHoldings(account, openAccount) {
   const listEl = document.getElementById("modal-holdings");
   const members = account.members || [account];
   const rows = [];
+  // A program lists its accounts; a click opens that account's own window
+  if (account.combined) {
+    account.rows.forEach((row) => {
+      rows.push({
+        label: row.owner,
+        note: getCardSubtitle(row, formatNumber),
+        value: formatNumber(row.points),
+        onClick: () => openAccount(row),
+      });
+    });
+  }
   // A pool lists its cards, each with a link to its own page
-  if (members.length > 1) {
+  if (members.length > 1 && !account.combined) {
     members.forEach((member) => {
       rows.push({
         label: `${member.accountName} (${member.accountId})`,
@@ -367,7 +381,7 @@ function renderHoldings(account) {
       });
     });
   }
-  if (account.expiresOn) {
+  if (account.expiresOn && !account.combined) {
     const partial = account.expiringAmount != null && account.expiringAmount !== account.points;
     rows.push({
       label: "Points expiring",
@@ -387,8 +401,9 @@ function renderHoldings(account) {
 
   listEl.replaceChildren(
     ...rows.map((row) => {
-      const rowEl = document.createElement("div");
-      rowEl.className = "modal-holding-row";
+      const rowEl = document.createElement(row.onClick ? "button" : "div");
+      rowEl.className = "modal-holding-row" + (row.onClick ? " clickable" : "");
+      if (row.onClick) rowEl.onclick = row.onClick;
       [["modal-holding-label", row.label], ["modal-holding-note", row.note], ["modal-holding-value", row.value]].forEach(
         ([className, text]) => {
           const isLink = row.url && className === "modal-holding-value";
@@ -477,11 +492,11 @@ function createCategoryGroup(cat, items, configs, valuations) {
     }
 
     // Click on the card opens the balance history line chart modal.
-    // A combined row has no single history, so it does not open one.
-    if (cardEl && !account.combined) {
+    // A combined row opens the program window, which lists its accounts.
+    if (cardEl) {
       cardEl.classList.add("clickable");
-      cardEl.setAttribute("title", `View balance history for ${displayName}`);
       cardEl.addEventListener("click", () => {
+        modalParent = null;
         openHistoryModal(account, valuations, configs);
       });
     }
@@ -630,6 +645,7 @@ function setupModalListeners() {
  */
 function closeHistoryModal() {
   activeModalAccount = null;
+  modalParent = null;
   const backdrop = document.getElementById("history-modal-backdrop");
   if (backdrop) {
     backdrop.classList.add("hidden");
@@ -660,7 +676,11 @@ function openHistoryModal(account, valuations, configs) {
     const members = account.members || [account];
     // The tier shows here, not on the card
     const parts = [account.accountName, account.tier, account.accountId].filter(Boolean);
-    nameEl.textContent = members.length > 1 ? `Pool of ${members.length} cards` : parts.join(" · ");
+    nameEl.textContent = account.combined
+      ? `${account.rows.length} accounts`
+      : members.length > 1
+        ? `Pool of ${members.length} cards`
+        : parts.join(" · ");
   }
   if (iconEl) {
     const siteConfig = configs ? configs.find((c) => c.siteName === account.provider) : null;
@@ -669,7 +689,7 @@ function openHistoryModal(account, valuations, configs) {
 
   // Portal button
   if (portalWrapper && portalBtn) {
-    if (account.scrapedUrl) {
+    if (account.scrapedUrl && !account.combined) {
       portalWrapper.classList.remove("hidden");
       portalBtn.onclick = () => {
         chrome.tabs.create({ url: account.scrapedUrl });
@@ -679,9 +699,24 @@ function openHistoryModal(account, valuations, configs) {
     }
   }
 
+  // A program window sums several accounts: it has no chart, owner or remove
+  backdrop.querySelector(".modal-card").classList.toggle("program-view", Boolean(account.combined));
+  const backBtn = document.getElementById("modal-back-btn");
+  backBtn.hidden = !modalParent;
+  backBtn.onclick = () => {
+    const program = modalParent;
+    modalParent = null;
+    openHistoryModal(program, valuations, configs);
+  };
+
   setupOwnerControls(account);
-  renderHoldings(account);
-  document.getElementById("modal-updated").textContent = `Updated ${getRelativeTime(account.lastUpdated)}`;
+  renderHoldings(account, (row) => {
+    modalParent = account;
+    openHistoryModal(row, valuations, configs);
+  });
+  document.getElementById("modal-updated").textContent = account.combined
+    ? ""
+    : `Updated ${getRelativeTime(account.lastUpdated)}`;
 
   // Reveal modal
   backdrop.classList.remove("hidden");
@@ -691,6 +726,14 @@ function openHistoryModal(account, valuations, configs) {
   const closeBtn = document.getElementById("modal-close-btn");
   if (closeBtn && typeof closeBtn.focus === "function") {
     closeBtn.focus();
+  }
+
+  if (account.combined) {
+    const cpp = getValuationCpp(account, valuations);
+    document.getElementById("modal-current-points").textContent =
+      currentDisplayMode === "usd" ? `$${formatCurrency(account.points * (cpp / 100))}` : `${formatNumber(account.points)} pts`;
+    document.getElementById("modal-pts-change").textContent = "";
+    return;
   }
 
   // Fetch points history using storage.js and render using chart.js

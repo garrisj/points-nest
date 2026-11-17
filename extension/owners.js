@@ -150,6 +150,8 @@ function combineByProgram(rows) {
       lastChanged: null,
       change: 0,
       members: group.flatMap((row) => row.members),
+      // The rows this one combines, for the program window
+      rows: group,
     };
   });
 }

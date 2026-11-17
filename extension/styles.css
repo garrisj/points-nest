@@ -696,6 +696,26 @@ body.two-column {
   border-top: 1px solid var(--border-color);
 }
 
+button.modal-holding-row {
+  border-width: 1px 0 0 0;
+  border-style: solid;
+  border-color: var(--border-color);
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+button.modal-holding-row:hover {
+  background: var(--bg-primary);
+}
+
+.program-view .modal-chart-section,
+.program-view .modal-owner-row {
+  display: none;
+}
+
 .modal-holding-label {
   font-size: var(--font-size-md);
   font-weight: 600;
