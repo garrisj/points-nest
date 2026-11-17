@@ -203,29 +203,6 @@ body.two-column {
   letter-spacing: -0.2px;
 }
 
-.status-dot {
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.status-dot.status-green {
-  background-color: var(--color-up);
-  box-shadow: 0 0 4px var(--color-up);
-}
-
-.status-dot.status-yellow {
-  background-color: var(--color-stale);
-  box-shadow: 0 0 4px var(--color-stale);
-}
-
-.status-dot.status-red {
-  background-color: var(--color-down);
-  box-shadow: 0 0 4px var(--color-down);
-}
-
 .empty-state {
   text-align: center;
   padding: var(--spacing-xl) var(--spacing-lg);
@@ -311,13 +288,6 @@ body.two-column {
 .account-card.highlighted.change-down .pts-change {
   color: var(--color-down);
   text-shadow: 0 0 6px var(--color-down);
-}
-
-.account-card.highlighted.change-new .pts-change {
-  color: var(--color-up);
-  text-shadow: 0 0 6px var(--color-up);
-  text-transform: uppercase;
-  font-weight: 700;
 }
 
 /* Clickable account card animations and styling */
@@ -754,45 +724,12 @@ button.modal-holding-row:hover {
   color: var(--text-primary);
 }
 
-.modal-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--spacing-sm);
-}
-
-.stat-card {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 6px var(--spacing-sm);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
 .stat-label {
   font-size: 10px;
   color: var(--text-secondary);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-}
-
-.stat-value {
-  font-size: var(--font-size-sm);
-  color: var(--text-primary);
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.stat-value.change-up {
-  color: var(--color-up);
-}
-
-.stat-value.change-down {
-  color: var(--color-down);
 }
 
 /* Owner groups (owners.js) */

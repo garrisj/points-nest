@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Points Nest (Secure & Local)",
+  "name": "Points Nest",
   "version": "1.0.0",
-  "description": "Securely and locally aggregates your credit card points balances.",
+  "description": "Tracks points, miles and travel credits from the account pages you open. All data stays in this browser.",
   "permissions": ["storage"],
   "icons": {
     "16": "icon16-active.png",

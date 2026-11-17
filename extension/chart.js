@@ -147,50 +147,7 @@ function renderHistoryChart(historyPoints, account, valuations, displayMode = "p
     }
   }
 
-  // 2. Update Stats Grid
-  const statNetChangeEl = document.getElementById("stat-net-change");
-  const statHighestEl = document.getElementById("stat-highest");
-  const statLowestEl = document.getElementById("stat-lowest");
-
-  if (statNetChangeEl) {
-    let pctStr = "";
-    if (firstPoint.points > 0 && netChange !== 0) {
-      const pct = ((netChange / firstPoint.points) * 100).toFixed(1);
-      pctStr = ` (${netChange > 0 ? "+" : ""}${pct}%)`;
-    }
-    if (netChange > 0) {
-      statNetChangeEl.textContent =
-        displayMode === "usd"
-          ? `+$${formatChartCurrency(netChange * (cpp / 100))}${pctStr}`
-          : `+${formatChartNumber(netChange)}${pctStr}`;
-      statNetChangeEl.className = "stat-value change-up";
-    } else if (netChange < 0) {
-      statNetChangeEl.textContent =
-        displayMode === "usd"
-          ? `-$${formatChartCurrency(Math.abs(netChange) * (cpp / 100))}${pctStr}`
-          : `-${formatChartNumber(Math.abs(netChange))}${pctStr}`;
-      statNetChangeEl.className = "stat-value change-down";
-    } else {
-      statNetChangeEl.textContent = displayMode === "usd" ? "$0.00" : "0 pts";
-      statNetChangeEl.className = "stat-value";
-    }
-  }
-
-  if (statHighestEl) {
-    statHighestEl.textContent =
-      displayMode === "usd"
-        ? `$${formatChartCurrency(maxPoints * (cpp / 100))}`
-        : `${formatChartNumber(maxPoints)} pts`;
-  }
-
-  if (statLowestEl) {
-    statLowestEl.textContent =
-      displayMode === "usd"
-        ? `$${formatChartCurrency(minPoints * (cpp / 100))}`
-        : `${formatChartNumber(minPoints)} pts`;
-  }
-
-  // 3. Render Chart SVG
+  // 2. Render Chart SVG
   chartContainer.replaceChildren();
 
   const timeMin = firstPoint.timestamp;

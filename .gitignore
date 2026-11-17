@@ -1,4 +1,5 @@
 output/
+node_modules/
 
 # Private data: page snapshots and exports never belong in the repository
 points-nest-snapshot-*.html
