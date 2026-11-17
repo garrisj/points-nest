@@ -15,146 +15,15 @@ function enqueueCapture(capture) {
 }
 
 // Listen for messages from content.js and popup.js
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message) => {
   if (message.type === "POINTS_SCRAPED") {
     const data = message.payload;
     console.log("[Points Nest] Received scraped points in background:", data);
     enqueueCapture(data);
-    if (sender && sender.tab) {
-      const accountKey = getAccountKey(data);
-      lastAccountByTab[sender.tab.id] = accountKey;
-      if (activeRefresh && sender.tab.id === activeRefresh.tabId) activeRefresh.settle(accountKey);
-    }
-  } else if (message.type === "GET_TAB_ACCOUNT") {
-    sendResponse({ accountKey: lastAccountByTab[message.tabId] || null, progress: refreshState });
-  } else if (message.type === "REFRESH_SITE") {
-    runRefresh(message);
   } else if (message.type === "POPUP_OPENED") {
     // Update icon to clear "update" state (with red dot)
     updateIconForActiveTab();
   }
-});
-
-/*
- * Refresh: re-reads a list of saved account pages when the user asks from
- * the popup (refresh.js). It walks the user's current tab through the
- * pages one at a time, where the page scraper reads them as on any visit,
- * with a pause between pages, then returns the tab to where it was. A
- * visible tab is used because sites do not finish drawing in a hidden one.
- * Nothing here runs on its own.
- */
-const REFRESH_PAUSE_MS = 4000;
-// Under the worker's 30-second idle limit, and over the scraper's 20 seconds
-const REFRESH_PAGE_TIMEOUT_MS = 25000;
-const REFRESH_BOUNCE_GRACE_MS = 5000;
-// The walk in progress: { tabId, settle }. One at a time.
-let activeRefresh = null;
-// The latest progress report, for a popup opened in mid-run
-let refreshState = null;
-// The account each tab last showed, by tab ID: how a refresh knows which
-// sign-in is in use. Kept in memory only.
-const lastAccountByTab = {};
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/**
- * `pages` lists what to read: [{ url, keys }], where `keys` are the
- * accounts saved at that address. Every key together is the sign-in the
- * popup expects.
- */
-async function runRefresh({ pages, tabId, returnUrl }) {
-  if (activeRefresh || !Array.isArray(pages) || pages.length === 0 || tabId == null) return;
-  const urls = pages.map((page) => page.url);
-  const keys = pages.flatMap((page) => page.keys);
-  const report = (state) => {
-    refreshState = { type: "REFRESH_PROGRESS", total: urls.length, ...state };
-    console.log("[Points Nest] Refresh:", refreshState);
-    chrome.runtime.sendMessage(refreshState).catch(() => {});
-  };
-  // Loads an address in the tab as a fresh document. Two addresses that
-  // differ only after "#" are one document to the browser, and the site
-  // would swap cards in place. Going by way of a blank page rules out
-  // reading one card's name beside another card's balance in mid-swap.
-  let currentUrl = returnUrl;
-  const go = async (url) => {
-    if (url.split("#")[0] === (currentUrl || "").split("#")[0]) {
-      const blank = waitForComplete(tabId);
-      await chrome.tabs.update(tabId, { url: "about:blank" });
-      await blank;
-    }
-    await chrome.tabs.update(tabId, { url });
-    currentUrl = url;
-  };
-  let read = 0;
-  let stopped = false;
-  activeRefresh = { tabId, page: -1, settle: () => {} };
-
-  try {
-    for (let i = 0; i < urls.length; i++) {
-      report({ done: i, read, running: true });
-      if (i > 0) await sleep(REFRESH_PAUSE_MS);
-      await go(urls[i]);
-      // Wait for this page's read, a bounce away from the site, or the timeout.
-      // Resolves to the account key read, or null when the page gave none.
-      activeRefresh.page = i;
-      const accountKey = await new Promise((resolve) => {
-        const timer = setTimeout(() => resolve(null), REFRESH_PAGE_TIMEOUT_MS);
-        activeRefresh.settle = (key) => {
-          clearTimeout(timer);
-          resolve(key);
-        };
-      });
-      activeRefresh.settle = () => {};
-      // A page that shows an account outside the expected sign-in means
-      // someone else is signed in: stop, and open nothing more.
-      if (accountKey && !keys.includes(accountKey)) {
-        stopped = true;
-        break;
-      }
-      // The site may send an address on to another card of the same
-      // sign-in. That read is saved under its own card, but this page
-      // does not count as read.
-      if (pages[i].keys.includes(accountKey)) read++;
-    }
-    if (returnUrl && returnUrl !== currentUrl) await go(returnUrl);
-  } catch (error) {
-    // The user closed the tab, or the page could not load: stop quietly
-    console.log("[Points Nest] Refresh stopped:", error);
-  } finally {
-    activeRefresh = null;
-    report({ done: urls.length, read, running: false, stopped });
-  }
-}
-
-/**
- * Resolves when the tab next finishes loading, or after a short wait.
- */
-function waitForComplete(tabId) {
-  return new Promise((resolve) => {
-    const done = () => {
-      chrome.tabs.onUpdated.removeListener(listener);
-      clearTimeout(timer);
-      resolve();
-    };
-    const listener = (id, changeInfo) => {
-      if (id === tabId && changeInfo.status === "complete") done();
-    };
-    const timer = setTimeout(done, 3000);
-    chrome.tabs.onUpdated.addListener(listener);
-  });
-}
-
-// A refresh page that lands off the tracked pages, such as a sign-in
-// screen for another person's account, is skipped after a short grace.
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (!activeRefresh || tabId !== activeRefresh.tabId || changeInfo.status !== "complete") return;
-  const page = activeRefresh.page;
-  setTimeout(async () => {
-    // Only for the page that was loading then, if the run is still on it
-    if (!activeRefresh || activeRefresh.page !== page) return;
-    const tab = await chrome.tabs.get(tabId).catch(() => null);
-    if (!tab || !matchesSiteConfig(tab.url)) activeRefresh.settle(null);
-  }, REFRESH_BOUNCE_GRACE_MS);
 });
 
 // Developer shortcut, unset by default: ask the page for a masked snapshot
