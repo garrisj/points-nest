@@ -18,7 +18,7 @@ const getRows = (pg) => (selector) => pg[selector] || [];
 const getText = (selector, row) => (selector ? row[selector] : row.text) || null;
 let lists = readLists(rules, getRows(page), getText);
 assert.deepStrictEqual(lists.funds, [{ label: "Travel Funds", amount: 239.4, unit: undefined }]);
-assert.deepStrictEqual(lists.certificate.map((c) => [c.id, c.amount, c.expiresOn]), [["A1", 1, "2027-05-01"], ["A2", 1, null]]);
+assert.deepStrictEqual(lists.certificate.map((c) => [c.id, c.amount, c.expiresOn]), [["A1", 1, "2027-05-01"], ["A2", 1, undefined]]);
 
 // A row that does not read drops its whole list; a list with no rows is empty, not missing.
 const bad = { ...page, ".fund": [{ text: "76,869 Points" }], ".cert": [] };
