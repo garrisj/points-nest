@@ -97,7 +97,9 @@ function readFields(fieldRules, getText) {
  *
  * `label` is fixed text or a rule. `amount` is required. `expiresOn`,
  * `total` and `id` are optional rules, and `unit` is optional text. A rule
- * with no selector reads the row's own text.
+ * with no selector reads the row's own text. `skipZero` leaves out rows
+ * whose amount is 0. `"required": true` on `expiresOn` means its element
+ * must be on the page, even when its text holds no date ("None").
  *
  * `getRows` finds the row elements; `getText` finds a selector's text inside
  * a row. Returns { type: [items] }. A list with a row it cannot read is
@@ -115,16 +117,22 @@ function readLists(listRules, getRows, getText) {
         amount: read(row, list.amount),
         unit: list.unit,
       };
+      let complete = true;
       ["expiresOn", "total", "id"].forEach((name) => {
-        if (list[name]) item[name] = read(row, list[name]);
+        const rule = list[name];
+        if (!rule) return;
+        item[name] = read(row, rule);
+        // A declared ID or total must read. Expiry may be absent, unless
+        // the rule is `required`: then its element must at least be there.
+        const missing = name === "expiresOn" ? rule.required && !getText(rule.selector, row) : item[name] == null;
+        if (missing) complete = false;
       });
-      // An optional rule that is declared must still read, except expiry
-      const complete = item.label && item.amount != null && (!list.id || item.id) && (!list.total || item.total != null);
-      return complete ? item : null;
+      return complete && item.label && item.amount != null ? item : null;
     });
 
     if (items.includes(null)) failed.add(list.type);
-    lists[list.type] = (lists[list.type] || []).concat(items);
+    const held = list.skipZero ? items.filter((item) => item && item.amount !== 0) : items;
+    lists[list.type] = (lists[list.type] || []).concat(held);
   });
 
   failed.forEach((type) => {

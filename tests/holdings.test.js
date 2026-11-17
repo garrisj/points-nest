@@ -67,11 +67,26 @@ assert.ok(state.holdings["air_9:certificate:a1"]);
 applyCapture(state, capture(7, { points: 140 }), now(5) + GONE_KEEP_MS + 1000);
 assert.ok(!state.holdings["air_9:certificate:a1"] && state.holdings["air_9:balance"].amount === 140);
 
-// Southwest: the travel funds figure in the banner is read; the points figure is not.
-const sw = require("../extension/site-config.json").find((s) => s.siteName === "Southwest Rapid Rewards").lists;
-const banner = (texts) => readLists(sw, () => texts.map((t) => ({ t })), (selector, row) => row.t);
-assert.deepStrictEqual(banner(["239.40 Dollars"]).funds, [{ label: "Travel Funds", amount: 239.4, unit: undefined }]);
-assert.deepStrictEqual(banner([]), { funds: [] });
-assert.deepStrictEqual(banner(["76,869 Points"]), {});
+// Site rules, against rows shaped like their pages. A row maps each selector to its text.
+const sites = require("../extension/site-config.json");
+const listsOf = (site, rows) => readLists(sites.find((s) => s.siteName === site).lists, () => rows, (selector, row) => row[selector] || null);
+const swAmount = '[class*="travelFundAmount__"] [class*="hiddenFromScreen"]';
+const swId = '[class*="confirmationNumber__"] [class*="numberPrefix__"] + span';
+const swExpiry = '[class*="transferabilitySection__"] [class*="additionalText__"]';
+const credit = (amount, id, expiry) => ({ [swAmount]: amount, [swId]: id, [swExpiry]: expiry });
+assert.deepStrictEqual(listsOf("Southwest Rapid Rewards", [credit("139.40 Dollars", "ABC123", "Expiration: None"), credit("100.00 Dollars", "XYZ789", "Expiration: 05/31/2027")]).funds, [
+  { label: "Flight Credit", amount: 139.4, unit: undefined, id: "ABC123", expiresOn: null },
+  { label: "Flight Credit", amount: 100, unit: undefined, id: "XYZ789", expiresOn: "2027-05-31" },
+]);
+assert.deepStrictEqual(listsOf("Southwest Rapid Rewards", []), { funds: [] });
+// A collapsed row shows no expiry element, so the list is skipped, not saved without dates.
+assert.deepStrictEqual(listsOf("Southwest Rapid Rewards", [credit("139.40 Dollars", "ABC123", null)]), {});
+assert.deepStrictEqual(listsOf("Southwest Rapid Rewards", [credit("76,869 Points", "ABC123", "Expiration: None")]), {});
+
+// IHG: the free nights tile gives a count; a count of 0 is no holding.
+const ihgTile = (text) => [{ '[data-testid="walletBodyTileBodyHeaderSID"]': text }];
+assert.deepStrictEqual(listsOf("IHG One", ihgTile("2 Free Night(s)")).certificate, [{ label: "Free Nights", amount: 2, unit: undefined }]);
+assert.deepStrictEqual(listsOf("IHG One", ihgTile("0 Free Night(s)")), { certificate: [] });
+assert.deepStrictEqual(listsOf("IHG One", ihgTile("Book a Reward Night")), {});
 console.warn = warn;
 console.log("ok holdings");

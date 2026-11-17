@@ -10,21 +10,30 @@
  * The copy keeps the page's structure and drops what a config never needs:
  * scripts, styles, frames, comments, form values and link targets. Every
  * digit becomes 1, except a year from 2000 to 2099, so dates still read as
- * dates. Names and other words stay as they are.
+ * dates. Codes that mix letters and digits are masked whole. Names and
+ * other words stay as they are.
  */
 
 const SNAPSHOT_DROP = "script, style, link, meta, noscript, iframe, object, embed, template, svg > *";
 // Attributes that selectors match on. All other attribute values are masked.
 const SNAPSHOT_KEEP = /^(class|role|type|rel|data-(testid|test|test-id|locator|qa|cy))$/;
+// Longer attribute values are data blobs, not something a selector reads
+const SNAPSHOT_MAX_ATTR = 300;
 // Attributes that can hold addresses, tokens or typed values
 const SNAPSHOT_STRIP = /^(href|src|srcset|action|value|style|content|nonce|integrity|on.*)$/;
 
 /**
- * Masks the digits in a string: "76,869 points by 05/31/2027" becomes
- * "11,111 points by 11/11/2027".
+ * Masks a string: "76,869 points by 05/31/2027" becomes "11,111 points by
+ * 11/11/2027". A code that mixes letters and digits, such as a member or
+ * confirmation number, also has its letters masked: "9E47UK4" becomes
+ * "1X11XX1". Ordinals such as "31st" keep their ending.
  */
 function maskDigits(text) {
-  return text.replace(/\d+/g, (run) => (/^20\d\d$/.test(run) ? run : "1".repeat(run.length)));
+  return text.replace(/[A-Za-z0-9]*\d[A-Za-z0-9]*/g, (word) => {
+    if (/^20\d\d$/.test(word)) return word;
+    if (/^\d+(st|nd|rd|th)?$/i.test(word)) return word.replace(/\d/g, "1");
+    return word.replace(/\d/g, "1").replace(/[A-Za-z]/g, "X");
+  });
 }
 
 /**
@@ -45,6 +54,7 @@ function buildSnapshot(doc, url, takenAt) {
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       [...node.attributes].forEach((attr) => {
         if (SNAPSHOT_STRIP.test(attr.name)) node.removeAttribute(attr.name);
+        else if (attr.value.length > SNAPSHOT_MAX_ATTR) node.setAttribute(attr.name, "");
         else if (!SNAPSHOT_KEEP.test(attr.name)) node.setAttribute(attr.name, maskDigits(attr.value));
       });
     }

@@ -211,7 +211,7 @@ async function scheduleScraperWithRetry() {
   console.log("[Points Nest] Start scraping on matched URL with config: ", activeConfig);
 
   let attempts = 0;
-  let lastScrapedPoints = null;
+  let lastScraped = null;
   const interval = 1000;
   const maxAttempts = 20;
 
@@ -220,7 +220,9 @@ async function scheduleScraperWithRetry() {
     const data = await scrapeData(activeConfig);
     if (data != null) {
       const isLastAttempt = attempts >= maxAttempts;
-      const hasStabilized = lastScrapedPoints !== null && lastScrapedPoints === data.points;
+      // Stable means the balance and any extra fields and lists read the same twice
+      const scraped = JSON.stringify([data.points, data.fields, data.lists]);
+      const hasStabilized = lastScraped === scraped;
       if ((data.points > 0 && hasStabilized) || isLastAttempt) {
         stopScraperRetry();
         chrome.runtime.sendMessage({
@@ -229,7 +231,7 @@ async function scheduleScraperWithRetry() {
         });
         console.log("[Points Nest] Scraped rewards data successfully:", data);
       } else {
-        lastScrapedPoints = data.points;
+        lastScraped = scraped;
         console.log(
           "[Points Nest] Scraped rewards points is loading or animating, will retry:",
           data.points,

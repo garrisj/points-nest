@@ -100,7 +100,20 @@
       "programName": {
         "transform": "titlecase"
       }
-    }
+    },
+    "lists": [
+      {
+        "type": "certificate",
+        "row": "[data-testid=\"freeNightsId\"]",
+        "label": "Free Nights",
+        "amount": {
+          "selector": "[data-testid=\"walletBodyTileBodyHeaderSID\"]",
+          "pattern": "^(\\d+) Free Night",
+          "parse": "number"
+        },
+        "skipZero": true
+      }
+    ]
   },
   {
     "siteName": "Hilton Honors",
@@ -380,12 +393,22 @@
     "lists": [
       {
         "type": "funds",
-        "row": "[class*=\"pointsOrTravelCredits__\"]:not(:last-of-type)",
-        "label": "Travel Funds",
+        "row": "li:has([class*=\"travelFundAmount__\"])",
+        "label": "Flight Credit",
         "amount": {
-          "selector": ".currency [class*=\"hiddenFromScreen\"]",
+          "selector": "[class*=\"travelFundAmount__\"] [class*=\"hiddenFromScreen\"]",
           "pattern": "^([\\d,.]+) Dollars$",
           "parse": "money"
+        },
+        "id": {
+          "selector": "[class*=\"confirmationNumber__\"] [class*=\"numberPrefix__\"] + span",
+          "parse": "text"
+        },
+        "expiresOn": {
+          "selector": "[class*=\"transferabilitySection__\"] [class*=\"additionalText__\"]",
+          "pattern": "^Expiration: (.+)$",
+          "parse": "date",
+          "required": true
         }
       }
     ]

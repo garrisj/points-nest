@@ -282,18 +282,28 @@ function formatExpiry(account) {
 }
 
 /**
- * Returns one short line per holding beside the balance, such as "$239.40
- * Travel Funds · exp May 1, 2027". A pooled row lists those of every member.
+ * Returns short lines for the holdings beside the balance, such as "$239.40
+ * Flight Credit (3) · exp May 1, 2027". A pooled row covers every member.
  */
 function formatExtras(account) {
   if (account.combined) return [];
-  return account.members
+  // Holdings of one kind share a line: their sum, count and nearest expiry
+  const groups = {};
+  account.members
     .flatMap((member) => member.extras || [])
-    .map((holding) => {
-      const amount = holding.unit === "USD" ? `$${formatCurrency(holding.amount)}` : formatNumber(holding.amount);
-      const expiry = holding.expiresOn ? ` · exp ${formatDate(holding.expiresOn)}` : "";
-      return `${amount} ${holding.label}${expiry}`;
+    .forEach((holding) => {
+      const key = `${holding.type}|${holding.label}|${holding.unit}`;
+      (groups[key] = groups[key] || []).push(holding);
     });
+
+  return Object.values(groups).map((group) => {
+    const { label, unit } = group[0];
+    const sum = group.reduce((total, holding) => total + holding.amount, 0);
+    const amount = unit === "USD" ? `$${formatCurrency(sum)}` : formatNumber(sum);
+    const count = group.length > 1 ? ` (${group.length})` : "";
+    const nearest = group.map((holding) => holding.expiresOn).filter(Boolean).sort()[0];
+    return `${amount} ${label}${count}${nearest ? ` · exp ${formatDate(nearest)}` : ""}`;
+  });
 }
 
 function createCategoryGroup(cat, items, configs, valuations) {
