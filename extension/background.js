@@ -85,18 +85,16 @@ async function runRefresh({ pages, tabId, returnUrl }) {
     for (let i = 0; i < urls.length; i++) {
       report({ done: i, read, running: true });
       if (i > 0) await sleep(REFRESH_PAUSE_MS);
-      // Wait for this page's capture, a bounce away from the site, or the timeout
-      const captured = new Promise((resolve) => {
+      await go(urls[i]);
+      // Wait for this page's read, a bounce away from the site, or the timeout.
+      // Resolves to the account key read, or null when the page gave none.
+      const accountKey = await new Promise((resolve) => {
         const timer = setTimeout(() => resolve(null), REFRESH_PAGE_TIMEOUT_MS);
-        activeRefresh.settle = (accountKey) => {
-          // A late read of another card of this sign-in is not this page's: keep waiting
-          if (accountKey && keys.includes(accountKey) && !pages[i].keys.includes(accountKey)) return;
+        activeRefresh.settle = (key) => {
           clearTimeout(timer);
-          resolve(accountKey);
+          resolve(key);
         };
       });
-      await go(urls[i]);
-      const accountKey = await captured;
       activeRefresh.settle = () => {};
       // A page that shows an account outside the expected sign-in means
       // someone else is signed in: stop, and open nothing more.
@@ -104,7 +102,10 @@ async function runRefresh({ pages, tabId, returnUrl }) {
         stopped = true;
         break;
       }
-      if (accountKey) read++;
+      // The site may send an address on to another card of the same
+      // sign-in. That read is saved under its own card, but this page
+      // does not count as read.
+      if (pages[i].keys.includes(accountKey)) read++;
     }
     if (returnUrl && returnUrl !== currentUrl) await go(returnUrl);
   } catch (error) {
