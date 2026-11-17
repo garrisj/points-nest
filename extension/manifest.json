@@ -25,7 +25,8 @@
     "https://myaccounts.capitalone.com/*",
     "https://www.choicehotels.com/*",
     "https://www.wyndhamhotels.com/*",
-    "https://www.southwest.com/*"
+    "https://www.southwest.com/*",
+    "https://eservice.evaair.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
