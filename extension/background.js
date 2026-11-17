@@ -15,12 +15,18 @@ function enqueueCapture(capture) {
 }
 
 // Listen for messages from content.js and popup.js
-chrome.runtime.onMessage.addListener((message, sender) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "POINTS_SCRAPED") {
     const data = message.payload;
     console.log("[Points Nest] Received scraped points in background:", data);
     enqueueCapture(data);
-    if (activeRefresh && sender.tab && sender.tab.id === activeRefresh.tabId) activeRefresh.settle(true);
+    if (sender && sender.tab) {
+      const accountKey = getAccountKey(data);
+      lastAccountByTab[sender.tab.id] = accountKey;
+      if (activeRefresh && sender.tab.id === activeRefresh.tabId) activeRefresh.settle(accountKey);
+    }
+  } else if (message.type === "GET_TAB_ACCOUNT") {
+    sendResponse(lastAccountByTab[message.tabId] || null);
   } else if (message.type === "REFRESH_SITE") {
     runRefresh(message);
   } else if (message.type === "POPUP_OPENED") {
@@ -43,21 +49,36 @@ const REFRESH_PAGE_TIMEOUT_MS = 25000;
 const REFRESH_BOUNCE_GRACE_MS = 5000;
 // The walk in progress: { tabId, settle }. One at a time.
 let activeRefresh = null;
+// The account each tab last showed, by tab ID: how a refresh knows which
+// sign-in is in use. Kept in memory only.
+const lastAccountByTab = {};
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function runRefresh({ urls, tabId, returnUrl }) {
-  if (activeRefresh || !Array.isArray(urls) || urls.length === 0 || tabId == null) return;
+/**
+ * `pages` lists what to read: [{ url, keys }], where `keys` are the
+ * accounts saved at that address. Every key together is the sign-in the
+ * popup expects.
+ */
+async function runRefresh({ pages, tabId, returnUrl }) {
+  if (activeRefresh || !Array.isArray(pages) || pages.length === 0 || tabId == null) return;
+  const urls = pages.map((page) => page.url);
+  const keys = pages.flatMap((page) => page.keys);
   const report = (state) =>
     chrome.runtime.sendMessage({ type: "REFRESH_PROGRESS", total: urls.length, ...state }).catch(() => {});
-  // Loads an address in the tab. The address the tab is already on is
-  // reloaded, since setting it again would do nothing.
+  // Loads an address in the tab as a fresh document. Two addresses that
+  // differ only after "#" are one document to the browser, and the site
+  // would swap cards in place: a reload rules out reading one card's name
+  // beside another card's balance in mid-swap.
   let currentUrl = returnUrl;
   const go = async (url) => {
-    await (url === currentUrl ? chrome.tabs.reload(tabId) : chrome.tabs.update(tabId, { url }));
+    const sameDocument = url.split("#")[0] === (currentUrl || "").split("#")[0];
+    if (url !== currentUrl) await chrome.tabs.update(tabId, { url });
+    if (sameDocument) await chrome.tabs.reload(tabId);
     currentUrl = url;
   };
   let read = 0;
+  let stopped = false;
   activeRefresh = { tabId, settle: () => {} };
 
   try {
@@ -66,15 +87,24 @@ async function runRefresh({ urls, tabId, returnUrl }) {
       if (i > 0) await sleep(REFRESH_PAUSE_MS);
       // Wait for this page's capture, a bounce away from the site, or the timeout
       const captured = new Promise((resolve) => {
-        const timer = setTimeout(() => resolve(false), REFRESH_PAGE_TIMEOUT_MS);
-        activeRefresh.settle = (result) => {
+        const timer = setTimeout(() => resolve(null), REFRESH_PAGE_TIMEOUT_MS);
+        activeRefresh.settle = (accountKey) => {
+          // A late read of another card of this sign-in is not this page's: keep waiting
+          if (accountKey && keys.includes(accountKey) && !pages[i].keys.includes(accountKey)) return;
           clearTimeout(timer);
-          resolve(result);
+          resolve(accountKey);
         };
       });
       await go(urls[i]);
-      if (await captured) read++;
+      const accountKey = await captured;
       activeRefresh.settle = () => {};
+      // A page that shows an account outside the expected sign-in means
+      // someone else is signed in: stop, and open nothing more.
+      if (accountKey && !keys.includes(accountKey)) {
+        stopped = true;
+        break;
+      }
+      if (accountKey) read++;
     }
     if (returnUrl && returnUrl !== currentUrl) await go(returnUrl);
   } catch (error) {
@@ -82,7 +112,7 @@ async function runRefresh({ urls, tabId, returnUrl }) {
     console.log("[Points Nest] Refresh stopped:", error);
   } finally {
     activeRefresh = null;
-    report({ done: urls.length, read, running: false });
+    report({ done: urls.length, read, running: false, stopped });
   }
 }
 
@@ -93,7 +123,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   const settle = activeRefresh.settle;
   setTimeout(async () => {
     const tab = await chrome.tabs.get(tabId).catch(() => null);
-    if (!tab || !matchesSiteConfig(tab.url)) settle(false);
+    if (!tab || !matchesSiteConfig(tab.url)) settle(null);
   }, REFRESH_BOUNCE_GRACE_MS);
 });
 
